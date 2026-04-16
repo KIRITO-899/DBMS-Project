@@ -116,8 +116,8 @@ async function switchPage(page) {
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
             gsap.killTweensOf(targets);
             gsap.fromTo(targets, 
-                { y: 20, opacity: 0 }, 
-                { y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "back.out(1.2)", clearProps: "all" }
+                { y: 30, opacity: 0, scale: 0.95, rotationX: 10, transformPerspective: 800 }, 
+                { y: 0, opacity: 1, scale: 1, rotationX: 0, duration: 0.8, stagger: 0.08, ease: "expo.out", clearProps: "all" }
             );
         } else {
             targets.forEach(el => { if(el.classList.contains('animate-in')) el.style.opacity = 1; });
@@ -178,7 +178,7 @@ async function loadDashboard() {
 
         // Trigger KPI card entrance animation (data may load after page-switch animation)
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#kpiGrid .kpi-card', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.07, ease: 'back.out(1.2)', clearProps: 'all' });
+            gsap.fromTo('#kpiGrid .kpi-card', { y: 35, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.08, ease: 'power4.out', clearProps: 'all' });
         } else {
             kpiGrid.querySelectorAll('.kpi-card').forEach(el => el.style.opacity = '1');
         }
@@ -318,7 +318,7 @@ async function loadAccidents() {
 
         // Trigger KPI card entrance animation
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#accidentKpis .kpi-card', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.07, ease: 'back.out(1.2)', clearProps: 'all' });
+            gsap.fromTo('#accidentKpis .kpi-card', { y: 35, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.08, ease: 'power4.out', clearProps: 'all' });
         } else {
             kpiContainer.querySelectorAll('.kpi-card').forEach(el => el.style.opacity = '1');
         }
@@ -377,7 +377,7 @@ async function applyAccidentFilter() {
         `).join('');
 
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#accidentKpis .animate-in', {y:20, opacity:0}, {y:0, opacity:1, duration:0.4, stagger:0.05, clearProps:'all'});
+            gsap.fromTo('#accidentKpis .animate-in', {y:30, opacity:0, scale:0.95}, {y:0, opacity:1, scale:1, duration:0.6, stagger:0.06, ease:'power3.out', clearProps:'all'});
         } else {
             document.querySelectorAll('#accidentKpis .animate-in').forEach(e => e.style.opacity = 1);
         }
@@ -468,7 +468,7 @@ async function loadTransport() {
 
         // Trigger KPI card entrance animation
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#transportKpis .kpi-card', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.07, ease: 'back.out(1.2)', clearProps: 'all' });
+            gsap.fromTo('#transportKpis .kpi-card', { y: 35, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.08, ease: 'power4.out', clearProps: 'all' });
         } else {
             kpiContainer.querySelectorAll('.kpi-card').forEach(el => el.style.opacity = '1');
         }
@@ -638,8 +638,8 @@ function initBackgroundAnimation() {
     const grid = document.querySelector('.bg-grid');
     if (grid) {
         gsap.to(grid, {
-            opacity: 0.4,
-            duration: 4,
+            opacity: 0.35,
+            duration: 6,
             ease: 'sine.inOut',
             yoyo: true,
             repeat: -1
@@ -655,7 +655,8 @@ function animateOrbFloat(orb, index) {
         x: gsap.utils.random(-xRange, xRange),
         y: gsap.utils.random(-yRange, yRange),
         scale: gsap.utils.random(0.7, 1.3),
-        duration: gsap.utils.random(12, 22),
+        rotation: gsap.utils.random(-60, 60),
+        duration: gsap.utils.random(15, 25),
         ease: 'sine.inOut',
         onComplete: () => animateOrbFloat(orb, index)
     });
@@ -707,7 +708,7 @@ async function init() {
         // Trigger initial animation for dashboard
         const dashTargets = document.getElementById('page-dashboard').querySelectorAll('.animate-in, .chart-card');
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo(dashTargets, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: "back.out(1.2)", clearProps: "all" });
+            gsap.fromTo(dashTargets, { y: 30, opacity: 0, scale: 0.95, rotationX: 10, transformPerspective: 800 }, { y: 0, opacity: 1, scale: 1, rotationX: 0, duration: 0.8, stagger: 0.08, ease: "expo.out", clearProps: "all" });
         } else {
             dashTargets.forEach(el => { if(el.classList.contains('animate-in')) el.style.opacity = 1; });
         }
