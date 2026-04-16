@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Traffic & Transport Database System — Real-time traffic monitoring, congestion analysis, and DBMS concept demonstrations for Indian smart cities.">
+    <title>Smart Traffic & Transport — DBMS Project</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <!-- Animated Background -->
+    <div class="bg-animation" id="bgAnimation">
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+        <div class="bg-orb orb-3"></div>
+        <div class="bg-orb orb-4"></div>
+        <div class="bg-orb orb-5"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <!-- ═══════════════ Sidebar ═══════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">SmartTraffic</span>
+                <span class="brand-sub">DBMS Project</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="dashboard" id="nav-dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="traffic" id="nav-traffic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <span>Traffic Monitor</span>
+            </a>
+            <a href="#" class="nav-item" data-page="accidents" id="nav-accidents">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Accidents</span>
+            </a>
+            <a href="#" class="nav-item" data-page="transport" id="nav-transport">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 16h20"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></svg>
+                <span>Transport</span>
+            </a>
+            <a href="#" class="nav-item" data-page="dbms" id="nav-dbms">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                <span>DBMS Concepts</span>
+                <span class="nav-badge">NEW</span>
+            </a>
+            <a href="#" class="nav-item" data-page="settings" id="nav-settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span>MySQL Connected</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══════════════ Main Content ═══════════════ -->
+    <main class="main-content" id="mainContent">
+
+        <!-- Header -->
+        <header class="main-header" id="mainHeader">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <button id="themeToggleBtn" class="theme-toggle" title="Toggle Theme" style="background:transparent;border:none;cursor:pointer;color:var(--text-secondary);display:flex;align-items:center;">
+                    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="display:none;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+                <div class="header-time" id="headerTime"></div>
+                <div class="header-badge">
+                    <span class="badge-dot"></span>
+                    Live
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Container -->
+        <div class="page-container" id="pageContainer">
+
+            <!-- ═══ Dashboard Page ═══ -->
+            <section class="page active" id="page-dashboard">
+                <div class="kpi-grid" id="kpiGrid">
+                    <!-- KPI cards injected by JS -->
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Congestion Distribution</h3>
+                            <span class="chart-badge">Real-time</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="congestionDonut"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Weather Impact on Traffic</h3>
+                            <span class="chart-badge">Analytics</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="weatherChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card wide glass-card">
+                        <div class="chart-header">
+                            <h3>Top Congested Cities</h3>
+                            <span class="chart-badge">Comparison</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="cityComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ Traffic Monitor Page ═══ -->
+            <section class="page" id="page-traffic">
+                <div class="controls-bar glass-card">
+                    <div class="control-group">
+                        <label>Select City</label>
+                        <select id="trafficCitySelect" class="select-input"></select>
+                    </div>
+                    <button class="btn-primary" id="trafficRefreshBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Road Congestion Levels</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="roadCongestionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Speed vs Speed Limit</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="speedCompChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="data-table-card glass-card">
+                    <div class="chart-header">
+                        <h3>Live Traffic Readings</h3>
+                        <span class="chart-badge pulse">LIVE</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="trafficTable">
+                            <thead>
+                                <tr>
+                                    <th>Road</th>
+                                    <th>City</th>
+                                    <th>Type</th>
+                                    <th>Vehicles</th>
+                                    <th>Avg Speed</th>
+                                    <th>Congestion</th>
+                                    <th>Weather</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trafficTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ Accidents Page ═══ -->
+            <section class="page" id="page-accidents">
+                <div class="kpi-grid small" id="accidentKpis"></div>
+                <!-- Filter Bar -->
+                <div class="controls-bar glass-card">
+                    <div class="control-group">
+                        <label>Filter by State</label>
+                        <select id="accidentStateSelect" class="select-input">
+                            <option value="">All States</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Severity</label>
+                        <select id="accidentSeveritySelect" class="select-input">
+                            <option value="">All Severities</option>
+                            <option value="Fatal">Fatal</option>
+                            <option value="Major">Major</option>
+                            <option value="Minor">Minor</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" id="accidentFilterBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        Apply Filter
+                    </button>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Accidents by Cause</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="accidentCauseChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Severity Distribution</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card wide glass-card">
+                        <div class="chart-header" style="justify-content: space-between; display: flex;">
+                            <h3>Monthly Accident Trend</h3>
+                            <button onclick="toggleTrendScale()" style="padding: 2px 8px; font-size: 0.75rem; border-radius: 4px; border: 1px solid var(--accent-cyan); background: transparent; color: var(--accent-cyan); cursor: pointer;">Toggle Log Scale</button>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="accidentTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Accidents by Time of Day</h3>
+                            <span class="chart-badge">Pattern</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="accidentTimeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Top States by Accidents</h3>
+                            <span class="chart-badge danger">Geo</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="accidentStateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="data-table-card glass-card">
+                    <div class="chart-header">
+                        <h3>Accident Hotspots & Live Feeds</h3>
+                        <span class="chart-badge danger pulse" id="liveAccidentsBadge" style="display: none;">🔴 LIVE API ACTIVE</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="hotspotTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Road</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>Accidents</th>
+                                    <th>Fatal / Severity</th>
+                                    <th>Casualties</th>
+                                    <th>Primary Causes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hotspotTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ Transport Page ═══ -->
+            <section class="page" id="page-transport">
+                <!-- Transport KPI Cards -->
+                <div class="kpi-grid small" id="transportKpis"></div>
+                <!-- Filter Bar -->
+                <div class="controls-bar glass-card">
+                    <div class="control-group">
+                        <label>Transport Type</label>
+                        <select id="transportTypeSelect" class="select-input">
+                            <option value="">All Types</option>
+                            <option value="Bus">🚌 Bus</option>
+                            <option value="Metro">🚇 Metro</option>
+                            <option value="Tram">🚋 Tram</option>
+                            <option value="Ferry">⛴️ Ferry</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" id="transportFilterBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        Filter
+                    </button>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Ridership by Transport Type</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="transportTypeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Top Cities by Ridership</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="transportCityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card wide glass-card">
+                        <div class="chart-header">
+                            <h3>Avg Frequency by Transport Type</h3>
+                            <span class="chart-badge">Efficiency</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="transportFreqChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="data-table-card glass-card">
+                    <div class="chart-header">
+                        <h3>Transit Routes</h3>
+                        <span class="chart-badge" id="transportRouteCount">All Routes</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="transportTable">
+                            <thead>
+                                <tr>
+                                    <th>Route Name</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>Type</th>
+                                    <th>Stops</th>
+                                    <th>Daily Ridership</th>
+                                    <th>Frequency (mins)</th>
+                                    <th>Efficiency</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transportTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ DBMS Concepts Page ═══ -->
+            <section class="page" id="page-dbms">
+                <div class="dbms-hero glass-card">
+                    <div class="dbms-hero-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    </div>
+                    <h2>DBMS Concepts Demonstration</h2>
+                    <p>Interactive exploration of <strong>Multi-Level Indexing</strong> and <strong>Query Cost Estimation</strong> using real data from the Smart Traffic database.</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="dbms-tabs">
+                    <button class="dbms-tab active" data-tab="indexes" id="tab-indexes">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></svg>
+                        Multi-Level Indexes
+                    </button>
+                    <button class="dbms-tab" data-tab="explain" id="tab-explain">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        EXPLAIN Analysis
+                    </button>
+                    <button class="dbms-tab" data-tab="cost" id="tab-cost">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                        Query Cost Estimation
+                    </button>
+                </div>
+
+                <!-- Tab Content: Indexes -->
+                <div class="dbms-tab-content active" id="tabContent-indexes">
+                    <div class="index-levels-grid" id="indexLevelsGrid">
+                        <!-- Injected by dbms.js -->
+                    </div>
+                    <div class="btree-visual glass-card" id="btreeVisual">
+                        <div class="chart-header">
+                            <h3>B+ Tree Index Structure Visualization</h3>
+                        </div>
+                        <div class="btree-container" id="btreeContainer">
+                            <!-- SVG B+ tree injected by dbms.js -->
+                        </div>
+                    </div>
+                    <div class="data-table-card glass-card">
+                        <div class="chart-header">
+                            <h3>All Database Indexes</h3>
+                            <span class="chart-badge">INFORMATION_SCHEMA</span>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="indexTable">
+                                <thead>
+                                    <tr>
+                                        <th>Table</th>
+                                        <th>Index Name</th>
+                                        <th>Level</th>
+                                        <th>Columns</th>
+                                        <th>Type</th>
+                                        <th>Cardinality</th>
+                                        <th>Unique</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="indexTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: EXPLAIN -->
+                <div class="dbms-tab-content" id="tabContent-explain">
+                    <div class="query-selector glass-card">
+                        <div class="chart-header">
+                            <h3>Select a Query to Analyze</h3>
+                        </div>
+                        <div class="query-list" id="queryList">
+                            <!-- Injected by dbms.js -->
+                        </div>
+                    </div>
+                    <div class="explain-results" id="explainResults">
+                        <!-- Injected by dbms.js after query selection -->
+                    </div>
+                </div>
+
+                <!-- Tab Content: Cost Estimation -->
+                <div class="dbms-tab-content" id="tabContent-cost">
+                    <div class="cost-overview glass-card" id="costOverview">
+                        <!-- Table stats card injected by dbms.js -->
+                    </div>
+                    <div class="cost-comparison-grid" id="costComparisonGrid">
+                        <!-- Cost cards injected by dbms.js -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ Settings Page ═══ -->
+            <section class="page" id="page-settings">
+                <div class="settings-grid">
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>System & API Status</h3>
+                            <button id="btnRefreshSettings" style="background:transparent;border:none;color:var(--accent-cyan);cursor:pointer;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg></button>
+                        </div>
+                        <div class="chart-body" style="min-height: auto;">
+                            <div class="settings-list-item">
+                                <span class="settings-list-label">MySQL Connection</span>
+                                <span class="settings-list-value" id="statusDbConn">Checking...</span>
+                            </div>
+                            <div class="settings-list-item">
+                                <span class="settings-list-label">Active Database</span>
+                                <span class="settings-list-value" id="statusDbName">-</span>
+                            </div>
+                            <div class="settings-list-item">
+                                <span class="settings-list-label">Total DB Records</span>
+                                <span class="settings-list-value" id="statusDbRecords">-</span>
+                            </div>
+                            <div class="settings-list-item" style="border:none; margin: 12px 0;"></div>
+                            <div class="settings-list-item">
+                                <span class="settings-list-label">TomTom API Status</span>
+                                <span class="settings-list-value" id="statusApiTomTom">Checking...</span>
+                            </div>
+                            <div class="settings-list-item">
+                                <span class="settings-list-label">Node Version</span>
+                                <span class="settings-list-value" id="statusNodeVersion">-</span>
+                            </div>
+                            <div class="settings-list-item">
+                                <span class="settings-list-label">Server Uptime</span>
+                                <span class="settings-list-value" id="statusServerUptime">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader">
+            <div class="loader-ring"></div>
+            <span>Loading data...</span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="/js/charts.js"></script>
+    <script src="/js/dbms.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
