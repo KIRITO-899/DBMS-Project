@@ -19,15 +19,43 @@ const DBMS = {
 
     // ─── Tab Switching ───────────────────────────────
     setupTabs() {
-        document.querySelectorAll('.dbms-tab').forEach(tab => {
+        const tabs = document.querySelectorAll('.dbms-tab');
+        const contents = document.querySelectorAll('.dbms-tab-content');
+        
+        tabs.forEach(tab => {
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.dbms-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.dbms-tab-content').forEach(c => c.classList.remove('active'));
+                // Kill all animations within the tab contents before switching
+                if (window.gsap) {
+                    contents.forEach(c => gsap.killTweensOf(c.querySelectorAll('*')));
+                }
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+                
                 tab.classList.add('active');
                 const target = tab.dataset.tab;
-                document.getElementById(`tabContent-${target}`).classList.add('active');
+                const targetEl = document.getElementById(`tabContent-${target}`);
+                if (targetEl) targetEl.classList.add('active');
             });
         });
+    },
+
+    // ─── Animation Control ───────────────────────────
+    stopAnimations() {
+        if (!window.gsap) return;
+        
+        // Stop the Index Race explicitly if it's running
+        const raceBtn = document.getElementById('btnStartRace');
+        if (raceBtn) {
+            raceBtn.disabled = false;
+            raceBtn.textContent = 'Restart Simulation';
+        }
+        
+        // Kill all DBMS-related animations
+        const dbmsPage = document.getElementById('page-dbms');
+        if (dbmsPage) {
+            gsap.killTweensOf(dbmsPage.querySelectorAll('.animate-in, .cost-card, .explain-card, .btree-node, .scan-box, #runnerScan, #runnerTree'));
+        }
     },
 
     // ─── Load & Render Indexes ───────────────────────

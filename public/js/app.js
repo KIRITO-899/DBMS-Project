@@ -139,13 +139,47 @@ async function switchPage(page) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
 
-    // Update pages
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    // Notify DBMS object to stop any internal animations if leaving the page
+    if (currentPage !== 'dbms' && window.DBMS && typeof window.DBMS.stopAnimations === 'function') {
+        window.DBMS.stopAnimations();
+    }
+
+    // Update pages: explicitly hide all and show target
+    const allPages = document.querySelectorAll('.page');
+    allPages.forEach(p => {
+        p.classList.remove('active');
+        
+        // Comprehensive cleanup of ANY animated elements to prevent "mixing"
+        if (window.gsap) {
+            const animatedElements = p.querySelectorAll('.animate-in, .chart-card, .data-table-card, .dbms-hero, .index-level-card, .cost-card, .explain-card, .query-item');
+            gsap.killTweensOf(animatedElements);
+            gsap.set(animatedElements, { clearProps: "all" });
+        }
+    });
+
     const pageEl = document.getElementById(`page-${page}`);
     if (pageEl) pageEl.classList.add('active');
 
+    // Reset DBMS sub-tab visibility if we are LEAVING DBMS page
+    if (page !== 'dbms') {
+        document.querySelectorAll('.dbms-tab-content').forEach(c => {
+            c.classList.remove('active');
+            if (window.gsap) gsap.killTweensOf(c.querySelectorAll('*'));
+        });
+    }
+
     // Update title
     document.getElementById('pageTitle').textContent = pageTitles[page] || page;
+
+    // Toggle performance widget visibility: Hide on settings/dbms, show on others
+    const perfWidget = document.getElementById('perfWidgetContainer');
+    if (perfWidget) {
+        if (['settings', 'dbms'].includes(page)) {
+            perfWidget.style.display = 'none';
+        } else {
+            perfWidget.style.display = 'flex';
+        }
+    }
 
     // Load page data if not loaded
     if (!pageLoaded[page]) {
@@ -157,7 +191,9 @@ async function switchPage(page) {
     if (pageEl) {
         const targets = pageEl.querySelectorAll('.animate-in, .chart-card, .data-table-card, .dbms-hero, .index-level-card');
         if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.killTweensOf(targets);
+            // Kill ANY existing animations on page targets to prevent "mixing" or ghosting
+            gsap.killTweensOf(document.querySelectorAll('.animate-in, .chart-card, .data-table-card'));
+            
             gsap.fromTo(targets, 
                 { y: 30, opacity: 0, scale: 0.95, rotationX: 10, transformPerspective: 800 }, 
                 { y: 0, opacity: 1, scale: 1, rotationX: 0, duration: 0.8, stagger: 0.08, ease: "expo.out", clearProps: "all" }
