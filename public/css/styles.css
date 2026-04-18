@@ -11,6 +11,7 @@
     --bg-card:        rgba(14, 16, 32, 0.75);
     --bg-card-hover:  rgba(20, 24, 48, 0.85);
     --bg-glass:       rgba(16, 18, 36, 0.6);
+    --bg-black:       #000000;
 
     /* Accent gradients */
     --accent-cyan:    #00e5ff;
@@ -592,6 +593,24 @@ body {
 .select-input:focus {
     outline: none;
     border-color: var(--accent-cyan);
+}
+
+/* Custom Toggle Switch */
+.toggle-track {
+    background-color: var(--bg-black);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle-knob {
+    transform: translateX(0);
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle-checkbox:checked + .toggle-track {
+    background-color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+}
+.toggle-checkbox:checked + .toggle-track .toggle-knob {
+    transform: translateX(16px);
 }
 
 .btn-primary {

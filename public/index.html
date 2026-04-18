@@ -91,6 +91,16 @@
                 <h1 class="page-title" id="pageTitle">Dashboard</h1>
             </div>
             <div class="header-right">
+                <div class="perf-widget" style="display:flex; align-items:center; gap:12px; margin-right:16px; padding-right:16px; border-right:1px solid var(--border-color);">
+                    <div class="perf-stopwatch" id="perfStopwatch" title="Last API Query Time" style="font-family:var(--font-mono); font-size:0.85rem; font-weight:600; color:var(--accent-green); background:rgba(0,255,0,0.1); padding:4px 8px; border-radius:4px; display:flex; align-items:center; gap:4px; min-width:75px; justify-content:center;">⚡ 0ms</div>
+                    <label class="perf-toggle" title="Toggle B+ Tree Indexing on backend" style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; font-weight:600; color:var(--text-secondary);">
+                        <span id="perfToggleLabel">Index: ON</span>
+                        <input type="checkbox" id="indexToggle" class="toggle-checkbox" checked style="display:none;">
+                        <div class="toggle-track" style="width:36px; height:20px; border-radius:20px; padding:2px; box-sizing:border-box; display:flex; align-items:center;">
+                            <div class="toggle-knob" style="width:16px; height:16px; border-radius:50%; background-color:white; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>
+                        </div>
+                    </label>
+                </div>
                 <button id="themeToggleBtn" class="theme-toggle" title="Toggle Theme" style="background:transparent;border:none;cursor:pointer;color:var(--text-secondary);display:flex;align-items:center;">
                     <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="display:none;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
                     <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -404,7 +414,47 @@
                             <!-- SVG B+ tree injected by dbms.js -->
                         </div>
                     </div>
-                    <div class="data-table-card glass-card">
+                    
+                    <!-- NEW LIVE INDEX RACE VISUAL -->
+                    <div class="index-race-card glass-card">
+                        <div class="chart-header" style="justify-content: space-between; display: flex; align-items: center;">
+                            <div>
+                                <h3>O(N) vs O(log N) — Live Race</h3>
+                                <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">Visualizing a Full Table Scan against a B+ Tree Index search.</p>
+                            </div>
+                            <button id="btnStartRace" class="btn-primary" style="padding:4px 12px; height:auto; min-height:30px;">🏁 Start Race</button>
+                        </div>
+                        <div class="race-container" style="position:relative; margin-top:20px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:rgba(0,0,0,0.2);">
+                            <!-- Top Track: Full Scan -->
+                            <div style="margin-bottom: 20px;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:8px;">
+                                    <strong style="color:var(--accent-red)">Full Table Scan O(N)</strong>
+                                    <span id="raceTimeTable" style="font-family:var(--font-mono)">0.00 ms</span>
+                                </div>
+                                <div id="trackScan" style="position:relative; height:20px; background:var(--bg-black); border-radius:10px; overflow:hidden; display:flex;">
+                                    <!-- 50 small boxes generated in JS -->
+                                </div>
+                                <div id="runnerScan" style="position:absolute; width:16px; height:16px; background:var(--accent-red); border-radius:50%; top:45px; left:12px; box-shadow:0 0 10px var(--accent-red); transition: none; opacity: 0;"></div>
+                            </div>
+                            
+                            <hr style="border:none; border-top:1px dashed var(--border-color); margin:15px 0;">
+
+                            <!-- Bottom Track: B+ Tree -->
+                            <div style="margin-bottom: 5px;">
+                                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:8px;">
+                                    <strong style="color:var(--accent-cyan)">B+ Tree Index O(log N)</strong>
+                                    <span id="raceTimeTree" style="font-family:var(--font-mono)">0.00 ms</span>
+                                </div>
+                                <div id="trackTree" style="position:relative; height:40px; border-radius:10px; display:flex; flex-direction:column; justify-content:space-between;">
+                                    <!-- 3 Tree Levels -->
+                                    <div class="tree-level-line" style="height:4px; width:100%; background:var(--bg-black); margin:0; position:relative;"><div style="position:absolute; left:50%; width:8px; height:8px; background:var(--text-muted); border-radius:50%; top:-2px; transform:translateX(-50%)"></div></div>
+                                    <div class="tree-level-line" style="height:4px; width:100%; background:var(--bg-black); margin:0; position:relative;"><div style="position:absolute; left:75%; width:8px; height:8px; background:var(--text-muted); border-radius:50%; top:-2px; transform:translateX(-50%)"></div></div>
+                                    <div class="tree-level-line" style="height:4px; width:100%; background:var(--bg-black); margin:0; position:relative;"><div style="position:absolute; left:80%; width:8px; height:8px; background:var(--accent-cyan); border-radius:50%; top:-2px; transform:translateX(-50%)"></div></div>
+                                </div>
+                                <div id="runnerTree" style="position:absolute; width:16px; height:16px; background:var(--accent-cyan); border-radius:50%; top:123px; left:50%; transform:translateX(-50%); box-shadow:0 0 10px var(--accent-cyan); transition: none; opacity: 0;"></div>
+                            </div>
+                        </div>
+                    </div>
                         <div class="chart-header">
                             <h3>All Database Indexes</h3>
                             <span class="chart-badge">INFORMATION_SCHEMA</span>

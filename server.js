@@ -4,6 +4,10 @@
 // ============================================================
 
 const express = require('express');
+const { AsyncLocalStorage } = require('async_hooks');
+const asyncLocalStorage = new AsyncLocalStorage();
+module.exports.asyncLocalStorage = asyncLocalStorage;
+
 const cors    = require('cors');
 const path    = require('path');
 const mysql   = require('mysql2/promise');
@@ -20,6 +24,27 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ─── Global Query Timer & Context Middleware ─────
+app.use((req, res, next) => {
+    const startTime = require('perf_hooks').performance.now();
+    const ignoreIndex = req.headers['x-ignore-index'] === 'true';
+
+    // Store the context (ignore_index flag) for the database pool
+    asyncLocalStorage.run({ ignoreIndex }, () => {
+        
+        // Intercept res.json to attach query duration header
+        const originalJson = res.json;
+        res.json = function(body) {
+            const duration = require('perf_hooks').performance.now() - startTime;
+            res.setHeader('X-Query-Time', duration.toFixed(2));
+            res.setHeader('X-Index-Status', ignoreIndex ? 'Ignored' : 'Used');
+            return originalJson.call(this, body);
+        };
+
+        next();
+    });
+});
 
 // ─── API Routes ─────────────────────────────
 app.use('/api/traffic',   require('./routes/traffic'));

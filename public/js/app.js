@@ -3,12 +3,55 @@
 // Smart Traffic & Transport Database System
 // ============================================================
 
-// ─── API Helper ──────────────────────────────────
+// ─── API Helper & Performance Stopwatch ────────────
 async function api(url) {
-    const res = await fetch(url);
+    const toggle = document.getElementById('indexToggle');
+    const ignoreIndex = toggle ? !toggle.checked : false; 
+    
+    const stopwatch = document.getElementById('perfStopwatch');
+    if (stopwatch) stopwatch.style.opacity = '0.5';
+
+    const startTime = performance.now();
+    const res = await fetch(url, {
+        headers: { 'X-Ignore-Index': ignoreIndex ? 'true' : 'false' }
+    });
+
+    if (stopwatch) {
+        // Prefer server-side exact DB time, fallback to network time
+        const dbTime = res.headers.get('X-Query-Time');
+        const timeNum = dbTime ? parseFloat(dbTime) : (performance.now() - startTime);
+        
+        stopwatch.style.opacity = '1';
+        stopwatch.textContent = `${timeNum > 50 ? '🐢' : '⚡'} ${timeNum.toFixed(1)}ms`;
+        
+        if (timeNum > 50) {
+            stopwatch.style.color = 'var(--accent-red)';
+            stopwatch.style.background = 'rgba(255,0,0,0.1)';
+        } else {
+            stopwatch.style.color = 'var(--accent-green)';
+            stopwatch.style.background = 'rgba(0,255,0,0.1)';
+        }
+        
+        // Add a quick pulse animation
+        stopwatch.style.transform = 'scale(1.1)';
+        setTimeout(() => stopwatch.style.transform = 'scale(1)', 150);
+    }
+
     if (!res.ok) throw new Error(`API Error: ${res.status}`);
     return res.json();
 }
+
+// Global listener for the Index Toggle
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'indexToggle') {
+        const label = document.getElementById('perfToggleLabel');
+        if (label) label.textContent = e.target.checked ? 'Index: ON' : 'Index: OFF';
+        // Reload current page to immediately show the performance difference!
+        if (currentPage && pageLoaded[currentPage]) {
+            loadPageData(currentPage);
+        }
+    }
+});
 
 // ─── Number Formatter ────────────────────────────
 function formatNum(n) {

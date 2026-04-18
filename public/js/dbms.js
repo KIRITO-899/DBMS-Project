@@ -14,6 +14,7 @@ const DBMS = {
         await this.loadIndexes();
         await this.loadQueries();
         await this.loadCostEstimation();
+        this.initRace();
     },
 
     // ─── Tab Switching ───────────────────────────────
@@ -174,6 +175,110 @@ const DBMS = {
                 <td>${idx.unique ? '✅' : '—'}</td>
             </tr>
         `).join('');
+    },
+
+    // ─── Live Index Racing (GSAP) ────────────────────
+    initRace() {
+        const trackScan = document.getElementById('trackScan');
+        const btnStart = document.getElementById('btnStartRace');
+        if (!trackScan || !btnStart) return;
+
+        // Generate 50 little boxes for the full scan track
+        trackScan.innerHTML = Array(50).fill(0).map(() => 
+            `<div style="flex:1; border-right:1px solid var(--border-color); opacity:0.3; transition:0.1s;" class="scan-box"></div>`
+        ).join('');
+
+        btnStart.addEventListener('click', () => this.startRace());
+    },
+
+    startRace() {
+        if (!window.gsap) return;
+        const btn = document.getElementById('btnStartRace');
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+
+        const runnerScan = document.getElementById('runnerScan');
+        const runnerTree = document.getElementById('runnerTree');
+        const boxes = document.querySelectorAll('.scan-box');
+        
+        const timeScan = document.getElementById('raceTimeTable');
+        const timeTree = document.getElementById('raceTimeTree');
+
+        // Reset
+        gsap.set(runnerScan, { x: 0, opacity: 1 });
+        gsap.set(runnerTree, { x: 0, y: 0, opacity: 1 });
+        gsap.set(boxes, { backgroundColor: 'transparent', opacity: 0.3 });
+        timeScan.textContent = '0.00 ms';
+        timeTree.textContent = '0.00 ms';
+
+        // 1. Full Scan Animation O(N)
+        // Scans through all boxes sequentially
+        const scanObj = { time: 0 };
+        const tlScan = gsap.timeline();
+        tlScan.to(runnerScan, {
+            x: trackScan.offsetWidth - 28, // Move to end
+            duration: 4.5,
+            ease: 'linear',
+            onUpdate: function() {
+                // Highlight boxes as we pass them
+                const progress = this.progress();
+                const currentBox = Math.floor(progress * 50);
+                if (boxes[currentBox]) {
+                    boxes[currentBox].style.backgroundColor = 'var(--accent-red)';
+                    boxes[currentBox].style.opacity = '0.8';
+                }
+            }
+        }, 0);
+        
+        // Timer for full scan (simulating ~240ms)
+        gsap.to(scanObj, {
+            time: 247.34,
+            duration: 4.5,
+            ease: 'linear',
+            onUpdate: () => timeScan.textContent = scanObj.time.toFixed(2) + ' ms'
+        });
+
+        // 2. B+ Tree Animation O(log N)
+        // Jumps quickly through 3 levels
+        const treeObj = { time: 0 };
+        const tlTree = gsap.timeline();
+        const treeWidth = document.getElementById('trackTree').offsetWidth;
+        const treeNodes = document.querySelectorAll('.tree-level-line > div');
+        const treeLines = document.querySelectorAll('.tree-level-line');
+
+        // Reset tree colors
+        gsap.set(treeNodes, { backgroundColor: 'var(--text-muted)', boxShadow: 'none' });
+        gsap.set(treeLines, { backgroundColor: 'var(--bg-black)' });
+
+        tlTree.to(runnerTree, { x: treeWidth * 0.25, y: 17, duration: 0.15, ease: 'power2.out', onComplete: () => {
+                if(treeNodes[0]) gsap.to(treeNodes[0], { backgroundColor: 'var(--accent-cyan)', boxShadow: '0 0 8px var(--accent-cyan)', duration: 0.1 });
+                if(treeLines[0]) gsap.to(treeLines[0], { backgroundColor: 'rgba(0, 229, 255, 0.2)', duration: 0.1 });
+              }}, 0)
+              .to(runnerTree, { x: treeWidth * 0.1, y: 34, duration: 0.15, ease: 'power2.out', onComplete: () => {
+                if(treeNodes[1]) gsap.to(treeNodes[1], { backgroundColor: 'var(--accent-cyan)', boxShadow: '0 0 8px var(--accent-cyan)', duration: 0.1 });
+                if(treeLines[1]) gsap.to(treeLines[1], { backgroundColor: 'rgba(0, 229, 255, 0.2)', duration: 0.1 });
+              }}, 0.2)
+              .to(runnerTree, { x: treeWidth * 0.3, y: 34, duration: 0.1, ease: 'power2.out', onComplete: () => {
+                if(treeNodes[2]) gsap.to(treeNodes[2], { backgroundColor: 'var(--accent-cyan)', boxShadow: '0 0 8px var(--accent-cyan)', duration: 0.1 });
+                if(treeLines[2]) gsap.to(treeLines[2], { backgroundColor: 'rgba(0, 229, 255, 0.2)', duration: 0.1 });
+              }}, 0.4) // Arrive at data
+              .call(() => {
+                  btn.disabled = false;
+                  btn.textContent = '🏁 Start Race';
+                  
+                  // Flash green on tree finish
+                  gsap.to(runnerTree, { scale: 1.5, boxShadow: '0 0 20px var(--accent-cyan)', duration: 0.2, yoyo: true, repeat: 1 });
+                  timeTree.style.color = 'var(--accent-green)';
+                  setTimeout(()=> timeTree.style.color = 'inherit', 1500);
+              });
+
+        // Timer for B+ Tree (simulating ~2ms)
+        gsap.to(treeObj, {
+            time: 2.15,
+            duration: 0.5,
+            ease: 'power2.out',
+            onUpdate: () => timeTree.textContent = treeObj.time.toFixed(2) + ' ms'
+        });
     },
 
     // ─── Load & Render Queries (EXPLAIN) ─────────────
