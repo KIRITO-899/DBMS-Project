@@ -415,6 +415,234 @@ function renderSpeedComparison(data) {
     });
 }
 
+function renderTrafficTrend(data) {
+    destroyChart('trafficTrendChart');
+    const ctx = document.getElementById('trafficTrendChart').getContext('2d');
+    if (!data || data.length === 0) return;
+
+    const labels = data.map(d => {
+        const dateStr = d.date ? new Date(d.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '';
+        return `${dateStr} ${String(d.hour).padStart(2, '0')}:00`;
+    });
+
+    const gradientVehicles = ChartConfig.createGradient(ctx, 'rgba(0,229,255,0.3)', 'rgba(0,229,255,0.02)');
+    const gradientSpeed = ChartConfig.createGradient(ctx, 'rgba(0,230,118,0.2)', 'rgba(0,230,118,0.01)');
+
+    chartInstances.trafficTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Avg Vehicles',
+                    data: data.map(d => d.avg_vehicles),
+                    borderColor: ChartConfig.colors.cyan,
+                    backgroundColor: gradientVehicles,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 1.5,
+                    pointHoverRadius: 5,
+                    borderWidth: 2,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Avg Speed (km/h)',
+                    data: data.map(d => d.avg_speed),
+                    borderColor: ChartConfig.colors.green,
+                    backgroundColor: gradientSpeed,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 1,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.5,
+                    borderDash: [4, 3],
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            ...ChartConfig.commonOptions(),
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+                    ticks: { color: '#5c6078', font: { size: 9 }, maxTicksLimit: 16, maxRotation: 45, minRotation: 30 }
+                },
+                y: {
+                    position: 'left',
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    ticks: { color: '#5c6078', font: { size: 11 } },
+                    title: { display: true, text: 'Vehicles', color: '#5c6078' }
+                },
+                y1: {
+                    position: 'right',
+                    grid: { display: false },
+                    ticks: { color: '#5c6078', font: { size: 11 } },
+                    title: { display: true, text: 'Speed (km/h)', color: '#5c6078' }
+                }
+            }
+        }
+    });
+}
+
+function renderRoadTypeLoad(data) {
+    destroyChart('roadTypeLoadChart');
+    const ctx = document.getElementById('roadTypeLoadChart').getContext('2d');
+    if (!data || data.length === 0) return;
+
+    // Aggregate vehicle counts by road type from congestion data
+    const typeMap = {};
+    data.forEach(d => {
+        const type = d.road_type || 'Unknown';
+        if (!typeMap[type]) typeMap[type] = { total: 0, count: 0 };
+        typeMap[type].total += Number(d.avg_vehicles || 0);
+        typeMap[type].count += 1;
+    });
+
+    const types = Object.keys(typeMap);
+    const values = types.map(t => Math.round(typeMap[t].total / typeMap[t].count));
+
+    const typeColors = {
+        NH: '#00e5ff',
+        SH: '#7c4dff',
+        Urban: '#448aff',
+        Arterial: '#f50057',
+        Expressway: '#ff9100',
+    };
+
+    chartInstances.roadTypeLoadChart = new Chart(ctx, {
+        type: 'polarArea',
+        data: {
+            labels: types,
+            datasets: [{
+                data: values,
+                backgroundColor: types.map(t => (typeColors[t] || '#8b8fa8') + '50'),
+                borderColor: types.map(t => typeColors[t] || '#8b8fa8'),
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: '#8b8fa8',
+                        font: { family: "'Inter', sans-serif", size: 11 },
+                        padding: 12,
+                        usePointStyle: true,
+                        pointStyleWidth: 8,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(12,14,26,0.95)',
+                    titleColor: '#eef0f6',
+                    bodyColor: '#8b8fa8',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 12,
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${ctx.raw.toLocaleString()} avg vehicles`
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    grid: { color: 'rgba(255,255,255,0.06)' },
+                    ticks: { display: false },
+                    beginAtZero: true,
+                }
+            }
+        }
+    });
+}
+
+function renderPeakHours(data) {
+    destroyChart('peakHoursChart');
+    const ctx = document.getElementById('peakHoursChart').getContext('2d');
+    if (!data || data.length === 0) return;
+
+    // Pad missing hours
+    const hourMap = {};
+    data.forEach(d => { hourMap[d.hour] = d; });
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const labels = hours.map(h => `${String(h).padStart(2, '0')}:00`);
+    const vehicleData = hours.map(h => hourMap[h]?.avg_vehicles || 0);
+    const congestionData = hours.map(h => hourMap[h]?.congestion_pct || 0);
+
+    // Gradient colors based on congestion intensity
+    const barColors = hours.map(h => {
+        const pct = hourMap[h]?.congestion_pct || 0;
+        if (pct > 60) return '#ff174460';
+        if (pct > 40) return '#ff910060';
+        if (pct > 20) return '#ffea0050';
+        return '#00e67640';
+    });
+    const barBorders = hours.map(h => {
+        const pct = hourMap[h]?.congestion_pct || 0;
+        if (pct > 60) return '#ff1744';
+        if (pct > 40) return '#ff9100';
+        if (pct > 20) return '#ffea00';
+        return '#00e676';
+    });
+
+    chartInstances.peakHoursChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Avg Vehicles',
+                    data: vehicleData,
+                    backgroundColor: barColors,
+                    borderColor: barBorders,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Congestion %',
+                    data: congestionData,
+                    type: 'line',
+                    borderColor: ChartConfig.colors.red,
+                    backgroundColor: ChartConfig.colors.red + '15',
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2,
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            ...ChartConfig.barOptions(),
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#5c6078', font: { size: 9 }, maxRotation: 60, minRotation: 45 }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.04)' },
+                    ticks: { color: '#5c6078' },
+                    title: { display: true, text: 'Avg Vehicles', color: '#5c6078' }
+                },
+                y1: {
+                    position: 'right',
+                    grid: { display: false },
+                    ticks: { color: '#5c6078' },
+                    title: { display: true, text: 'Congestion %', color: '#5c6078' },
+                    min: 0,
+                    max: 100,
+                }
+            }
+        }
+    });
+}
+
 // ────────────────────────────────────────────────────
 // Accident Page Charts
 // ────────────────────────────────────────────────────

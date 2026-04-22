@@ -286,38 +286,194 @@ async function loadDashboard() {
 
 // ─── Traffic Monitor ─────────────────────────────
 let trafficCities = [];
+let trafficRoads = [];
 
 async function loadTraffic() {
     try {
         // Load cities dropdown
         trafficCities = await api('/api/traffic/cities');
-        const select = document.getElementById('trafficCitySelect');
-        select.innerHTML = '<option value="">All Cities</option>' +
+        const citySelect = document.getElementById('trafficCitySelect');
+        citySelect.innerHTML = '<option value="">All Cities</option>' +
             trafficCities.map(c =>
                 `<option value="${c.city_id}">${c.city_name}${c.is_metro ? ' ★' : ''} — ${c.state_name}</option>`
             ).join('');
 
-        select.addEventListener('change', () => {
-            loadTrafficData(select.value);
-            loadLiveTraffic(select.value);
+        const roadSelect = document.getElementById('trafficRoadSelect');
+
+        // City change handler
+        citySelect.addEventListener('change', async () => {
+            const cityId = citySelect.value;
+            await refreshTrafficPage(cityId);
+            // Update road dropdown for selected city
+            await loadRoadDropdown(cityId);
         });
+
+        // Road change handler
+        roadSelect.addEventListener('change', async () => {
+            const roadId = roadSelect.value;
+            if (roadId) {
+                const road = trafficRoads.find(r => r.road_id == roadId);
+                const label = document.getElementById('trendRoadLabel');
+                if (label && road) label.textContent = road.road_name;
+                await loadTrafficTrend(roadId);
+            }
+        });
+
+        // Refresh button
         document.getElementById('trafficRefreshBtn').addEventListener('click', () => {
-            loadTrafficData(select.value);
-            loadLiveTraffic(select.value);
+            const cityId = citySelect.value;
+            refreshTrafficPage(cityId);
         });
 
-        // Load live data (all cities initially)
-        await loadLiveTraffic();
-
-        // Load default city congestion
-        if (trafficCities.length > 0) {
-            select.value = trafficCities[0].city_id;
-            await loadTrafficData(trafficCities[0].city_id);
-            await loadLiveTraffic(trafficCities[0].city_id);
+        // Initial load: pick first metro city or first city
+        const defaultCity = trafficCities.find(c => c.is_metro) || trafficCities[0];
+        if (defaultCity) {
+            citySelect.value = defaultCity.city_id;
+            await refreshTrafficPage(defaultCity.city_id);
+            await loadRoadDropdown(defaultCity.city_id);
+        } else {
+            await refreshTrafficPage('');
         }
     } catch (err) {
         console.error('Traffic load error:', err);
     }
+}
+
+async function refreshTrafficPage(cityId) {
+    const id = cityId || 'all';
+    try {
+        // Load everything in parallel
+        const [congestionData, kpiData, peakHoursData, heatmapData] = await Promise.all([
+            api(`/api/traffic/congestion/${id}`),
+            api(`/api/traffic/city-kpi/${id}`),
+            api(`/api/traffic/peak-hours/${id}`),
+            api('/api/traffic/heatmap'),
+        ]);
+
+        // Render KPI cards
+        renderTrafficKpis(kpiData);
+
+        // Render existing charts
+        renderRoadCongestion(congestionData);
+        renderSpeedComparison(congestionData);
+
+        // Render new charts
+        renderRoadTypeLoad(congestionData);
+        renderPeakHours(peakHoursData);
+
+        // Render heatmap table
+        renderHeatmapTable(heatmapData);
+
+        // Load live table
+        await loadLiveTraffic(cityId);
+
+        // Load trend for first road in data if available
+        if (congestionData.length > 0) {
+            const firstRoad = congestionData[0];
+            const label = document.getElementById('trendRoadLabel');
+            if (label) label.textContent = firstRoad.road_name || '7-Day History';
+            await loadTrafficTrend(firstRoad.road_id);
+        }
+    } catch (err) {
+        console.error('Traffic refresh error:', err);
+    }
+}
+
+async function loadRoadDropdown(cityId) {
+    const roadSelect = document.getElementById('trafficRoadSelect');
+    if (!cityId) {
+        roadSelect.innerHTML = '<option value="">All Roads</option>';
+        trafficRoads = [];
+        return;
+    }
+    try {
+        trafficRoads = await api(`/api/traffic/roads/${cityId}`);
+        roadSelect.innerHTML = '<option value="">— Select a road —</option>' +
+            trafficRoads.map(r =>
+                `<option value="${r.road_id}">${r.road_name} (${r.road_type})</option>`
+            ).join('');
+    } catch (err) {
+        console.error('Road dropdown error:', err);
+    }
+}
+
+function renderTrafficKpis(data) {
+    const weatherIcons = { Clear: '☀️', Rain: '🌧️', Fog: '🌫️', Storm: '⛈️' };
+    const kpis = [
+        { label: 'Total Roads',     value: Number(data.total_roads),     color: 'cyan',   icon: '🛣️' },
+        { label: 'Avg Speed',       value: parseFloat(data.avg_speed) || 0,  color: 'green',  icon: '⚡', suffix: ' km/h' },
+        { label: 'Peak Vehicles',   value: Number(data.peak_vehicles),   color: 'purple', icon: '🚗' },
+        { label: 'Congestion Rate', value: parseFloat(data.congestion_rate) || 0, color: 'red', icon: '🔴', suffix: '%' },
+        { label: 'Total Readings',  value: Number(data.total_readings),  color: 'orange', icon: '📊' },
+        { label: 'Dominant Weather', value: data.dominant_weather || 'Clear',  color: 'blue',  icon: weatherIcons[data.dominant_weather] || '☀️', isText: true },
+    ];
+
+    const container = document.getElementById('trafficKpis');
+    container.innerHTML = kpis.map((k, i) => `
+        <div class="kpi-card ${k.color} animate-in stagger-${i+1}">
+            <div class="kpi-label">${k.icon} ${k.label}</div>
+            <div class="kpi-value ${k.color}" ${k.isText ? '' : `data-target="${k.value}"`} ${k.suffix ? `data-suffix="${k.suffix}"` : ''}>${k.isText ? k.value : '0'}</div>
+            ${data.city_name ? `<div class="kpi-sub">${data.city_name}${data.state_name ? ' • ' + data.state_name : ''}</div>` : ''}
+        </div>
+    `).join('');
+
+    // Animate entrance
+    if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
+        gsap.fromTo('#trafficKpis .kpi-card', { y: 35, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.08, ease: 'power4.out', clearProps: 'all' });
+    } else {
+        container.querySelectorAll('.kpi-card').forEach(el => el.style.opacity = '1');
+    }
+
+    // Animate counters
+    container.querySelectorAll('.kpi-value[data-target]').forEach(el => {
+        const target = parseFloat(el.dataset.target);
+        const suffix = el.dataset.suffix || '';
+        animateCounter(el, target);
+        if (suffix) {
+            setTimeout(() => { el.textContent = formatNum(target) + suffix; }, 1300);
+        }
+    });
+}
+
+async function loadTrafficTrend(roadId) {
+    if (!roadId) return;
+    try {
+        const data = await api(`/api/traffic/trend/${roadId}?days=7`);
+        renderTrafficTrend(data);
+    } catch (err) {
+        console.error('Traffic trend error:', err);
+    }
+}
+
+function renderHeatmapTable(data) {
+    const tbody = document.getElementById('heatmapTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = data.slice(0, 25).map((row, i) => {
+        const pct = parseFloat(row.congestion_pct) || 0;
+        const levelClass = pct > 60 ? 'level-severe' : pct > 40 ? 'level-high' : pct > 20 ? 'level-moderate' : 'level-low';
+        const pctColor = pct > 60 ? 'var(--accent-red)' : pct > 40 ? 'var(--accent-orange)' : pct > 20 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+
+        return `
+            <tr>
+                <td style="font-family:var(--font-mono); color:var(--text-muted)">${i + 1}</td>
+                <td style="color:var(--text-primary); font-weight:500">${row.city_name}</td>
+                <td style="color:var(--text-muted); font-size:0.82rem">${row.state_name}</td>
+                <td style="font-family:var(--font-mono)">${row.population ? Number(row.population).toLocaleString() : '—'}</td>
+                <td style="font-family:var(--font-mono); color:var(--accent-cyan)">${Number(row.readings).toLocaleString()}</td>
+                <td style="font-family:var(--font-mono); color:${parseFloat(row.avg_speed) < 30 ? 'var(--accent-red)' : parseFloat(row.avg_speed) < 50 ? 'var(--accent-orange)' : 'var(--accent-green)'}">${row.avg_speed} km/h</td>
+                <td style="font-family:var(--font-mono)">${Number(row.avg_vehicles).toLocaleString()}</td>
+                <td>
+                    <div class="congestion-bar-container">
+                        <div class="congestion-bar-track">
+                            <div class="congestion-bar-fill ${levelClass}" style="width:${Math.min(pct, 100)}%"></div>
+                        </div>
+                        <span class="congestion-bar-pct" style="color:${pctColor}">${pct}%</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function loadLiveTraffic(cityId) {
@@ -341,17 +497,6 @@ async function loadLiveTraffic(cityId) {
         `).join('');
     } catch (err) {
         console.error('Live traffic error:', err);
-    }
-}
-
-async function loadTrafficData(cityId) {
-    if (!cityId) cityId = 'all';
-    try {
-        const data = await api(`/api/traffic/congestion/${cityId}`);
-        renderRoadCongestion(data);
-        renderSpeedComparison(data);
-    } catch (err) {
-        console.error('Traffic data error:', err);
     }
 }
 

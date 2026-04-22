@@ -154,20 +154,31 @@
 
             <!-- ═══ Traffic Monitor Page ═══ -->
             <section class="page" id="page-traffic">
+                <!-- Traffic KPI Cards -->
+                <div class="kpi-grid small" id="trafficKpis"></div>
+
                 <div class="controls-bar glass-card">
                     <div class="control-group">
                         <label>Select City</label>
                         <select id="trafficCitySelect" class="select-input"></select>
+                    </div>
+                    <div class="control-group">
+                        <label>Select Road</label>
+                        <select id="trafficRoadSelect" class="select-input">
+                            <option value="">All Roads</option>
+                        </select>
                     </div>
                     <button class="btn-primary" id="trafficRefreshBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
                         Refresh
                     </button>
                 </div>
+
                 <div class="charts-grid">
                     <div class="chart-card glass-card">
                         <div class="chart-header">
                             <h3>Road Congestion Levels</h3>
+                            <span class="chart-badge">Stacked</span>
                         </div>
                         <div class="chart-body">
                             <canvas id="roadCongestionChart"></canvas>
@@ -176,12 +187,67 @@
                     <div class="chart-card glass-card">
                         <div class="chart-header">
                             <h3>Speed vs Speed Limit</h3>
+                            <span class="chart-badge">Comparison</span>
                         </div>
                         <div class="chart-body">
                             <canvas id="speedCompChart"></canvas>
                         </div>
                     </div>
+                    <div class="chart-card wide glass-card">
+                        <div class="chart-header">
+                            <h3>Traffic Trend — Hourly Volume</h3>
+                            <span class="chart-badge" id="trendRoadLabel">7-Day History</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="trafficTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Vehicle Load by Road Type</h3>
+                            <span class="chart-badge">Distribution</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="roadTypeLoadChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">
+                            <h3>Peak Hours Analysis</h3>
+                            <span class="chart-badge danger">Hotspots</span>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="peakHoursChart"></canvas>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- City Congestion Heatmap -->
+                <div class="data-table-card glass-card">
+                    <div class="chart-header">
+                        <h3>City Congestion Ranking</h3>
+                        <span class="chart-badge">Heatmap</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="heatmapTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>Population</th>
+                                    <th>Readings</th>
+                                    <th>Avg Speed</th>
+                                    <th>Avg Vehicles</th>
+                                    <th>Congestion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="heatmapTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Live Traffic Readings Table -->
                 <div class="data-table-card glass-card">
                     <div class="chart-header">
                         <h3>Live Traffic Readings</h3>

@@ -721,6 +721,65 @@ body {
     gap: 4px;
 }
 
+/* ─── Traffic Heatmap Progress Bars ─────────────── */
+.congestion-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 180px;
+}
+
+.congestion-bar-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.congestion-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.congestion-bar-fill.level-low {
+    background: linear-gradient(90deg, #00e676, #00c853);
+}
+.congestion-bar-fill.level-moderate {
+    background: linear-gradient(90deg, #ffea00, #ffd600);
+}
+.congestion-bar-fill.level-high {
+    background: linear-gradient(90deg, #ff9100, #ff6d00);
+}
+.congestion-bar-fill.level-severe {
+    background: linear-gradient(90deg, #ff1744, #d50000);
+}
+
+.congestion-bar-pct {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    min-width: 45px;
+    text-align: right;
+}
+
+/* Additional road type badges */
+.badge-arterial    { background: rgba(245,0,87,0.1);    color: var(--accent-pink); }
+.badge-expressway  { background: rgba(124,77,255,0.12); color: var(--accent-purple); }
+
+/* KPI value blue variant */
+.kpi-value.blue   { color: var(--accent-blue); }
+.kpi-card.blue::before { background: linear-gradient(135deg, #448aff 0%, #2979ff 100%); }
+
+/* Light mode additions for heatmap */
+body.light-mode .congestion-bar-track { background: rgba(15,23,42,0.07); }
+body.light-mode .badge-arterial   { background: rgba(219,39,119,0.1); color: #be185d; }
+body.light-mode .badge-expressway { background: rgba(109,40,217,0.1); color: #5b21b6; }
+body.light-mode .kpi-value.blue   { color: #2563eb; }
+
 /* ─── DBMS Concepts Page ────────────────────────── */
 .dbms-hero {
     padding: 32px;

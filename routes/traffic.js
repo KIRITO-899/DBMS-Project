@@ -141,4 +141,85 @@ router.get('/roads/:cityId', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// GET /api/traffic/city-kpi/:cityId — Aggregated KPI stats for a city
+router.get('/city-kpi/:cityId', async (req, res, next) => {
+    try {
+        const cityId = req.params.cityId;
+        const isAll = cityId === 'all';
+        const whereRoad = isAll ? '' : 'WHERE r.city_id = ?';
+        const whereCity = isAll ? '' : 'WHERE c.city_id = ?';
+        const params = isAll ? [] : [cityId];
+
+        const queries = [
+            // Total roads
+            pool.query(`SELECT COUNT(*) AS cnt FROM roads r ${whereRoad}`, params),
+            // Avg speed, peak vehicles, total readings, congestion rate
+            pool.query(`
+                SELECT
+                    ROUND(AVG(tr.avg_speed_kmph), 2) AS avg_speed,
+                    MAX(tr.vehicle_count) AS peak_vehicles,
+                    COUNT(tr.reading_id) AS total_readings,
+                    ROUND(
+                        SUM(CASE WHEN tr.congestion_level IN ('High','Severe') THEN 1 ELSE 0 END)
+                        / NULLIF(COUNT(tr.reading_id), 0) * 100, 2
+                    ) AS congestion_rate
+                FROM traffic_readings tr
+                ${isAll ? '' : 'JOIN roads r ON tr.road_id = r.road_id WHERE r.city_id = ?'}
+            `, params),
+            // Dominant weather
+            pool.query(`
+                SELECT tr.weather, COUNT(*) AS cnt
+                FROM traffic_readings tr
+                ${isAll ? '' : 'JOIN roads r ON tr.road_id = r.road_id WHERE r.city_id = ?'}
+                GROUP BY tr.weather ORDER BY cnt DESC LIMIT 1
+            `, params),
+            // City info
+            isAll
+                ? pool.query(`SELECT COUNT(*) AS city_count FROM cities`)
+                : pool.query(`SELECT c.city_name, s.state_name, c.population FROM cities c JOIN states s ON c.state_id = s.state_id ${whereCity}`, params),
+        ];
+
+        const results = await Promise.all(queries);
+        const stats = results[1][0][0];
+        const weatherRow = results[2][0][0];
+        const cityInfo = results[3][0][0];
+
+        res.json({
+            total_roads: results[0][0][0].cnt,
+            avg_speed: stats?.avg_speed || 0,
+            peak_vehicles: stats?.peak_vehicles || 0,
+            total_readings: stats?.total_readings || 0,
+            congestion_rate: stats?.congestion_rate || 0,
+            dominant_weather: weatherRow?.weather || 'Clear',
+            city_name: isAll ? `${cityInfo?.city_count || 0} Cities` : cityInfo?.city_name || '',
+            state_name: isAll ? 'All India' : cityInfo?.state_name || '',
+            population: isAll ? null : cityInfo?.population || null,
+        });
+    } catch (err) { next(err); }
+});
+
+// GET /api/traffic/peak-hours/:cityId — Traffic volume by hour of day
+router.get('/peak-hours/:cityId', async (req, res, next) => {
+    try {
+        const cityId = req.params.cityId;
+        const isAll = cityId === 'all';
+        const [rows] = await pool.query(`
+            SELECT
+                HOUR(tr.reading_timestamp) AS hour,
+                COUNT(tr.reading_id) AS readings,
+                ROUND(AVG(tr.vehicle_count), 0) AS avg_vehicles,
+                ROUND(AVG(tr.avg_speed_kmph), 2) AS avg_speed,
+                ROUND(
+                    SUM(CASE WHEN tr.congestion_level IN ('High','Severe') THEN 1 ELSE 0 END)
+                    / NULLIF(COUNT(tr.reading_id), 0) * 100, 2
+                ) AS congestion_pct
+            FROM traffic_readings tr
+            ${isAll ? '' : 'JOIN roads r ON tr.road_id = r.road_id WHERE r.city_id = ?'}
+            GROUP BY hour
+            ORDER BY hour
+        `, isAll ? [] : [cityId]);
+        res.json(rows);
+    } catch (err) { next(err); }
+});
+
 module.exports = router;
