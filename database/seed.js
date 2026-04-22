@@ -377,16 +377,28 @@ async function seed() {
     const BATCH_SIZE = 500;
     let totalReadings = 0;
 
+    // Identify metro cities for congestion weighting
+    // India's most congested metros based on TomTom Traffic Index & MoRTH data
+    const METRO_CONGESTION_WEIGHTS = {
+        'Mumbai': 0.85, 'Delhi': 0.82, 'Bangalore': 0.80, 'Kolkata': 0.78,
+        'Chennai': 0.77, 'Hyderabad': 0.75, 'Pune': 0.72, 'Ahmedabad': 0.68,
+        'Surat': 0.65, 'Jaipur': 0.63, 'Lucknow': 0.60
+    };
+
     for (const road of roadRows) {
         // Map road's city to fetch live baseline
         const cityName = cityRows.find(c => c.city_id === road.city_id)?.city_name;
+        const isMetroCity = CITIES.find(c => c[0] === cityName)?.[4] || false;
+        const metroCongestionWeight = METRO_CONGESTION_WEIGHTS[cityName] || 0;
         let liveBaseline = null;
         if (cityName) {
             liveBaseline = await getLiveTrafficForCity(cityName);
         }
 
         // Generate 30-80 readings per road depending on road type
-        const readingsCount = road.road_type === 'NH' ? rand(50,80) :
+        // Metro cities get MORE readings to reflect higher data density
+        const readingsCount = isMetroCity ? rand(60, 100) :
+                              road.road_type === 'NH' ? rand(50,80) :
                               road.road_type === 'Expressway' ? rand(40,70) : rand(30,50);
 
         for (let i = 0; i < readingsCount; i++) {
@@ -403,30 +415,63 @@ async function seed() {
                 vcount = congestion === 'Severe' ? rand(1500,2500) : congestion === 'Low' ? rand(100,400) : rand(500,1200);
             } else if (liveBaseline) {
                 // BACKFILL: Mathematically synthesize historical data from the live baseline
-                const timeMultiplier = ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 20)) ? randF(0.4, 0.7) : 
-                                       ((hour >= 21 || hour <= 5)) ? randF(1.2, 1.6) : randF(0.8, 1.1);
+                // Metro cities get more aggressive congestion (lower speeds) during peak hours
+                const peakMultiplier = metroCongestionWeight > 0.7 ? randF(0.15, 0.45) : randF(0.4, 0.7);
+                const midMultiplier  = metroCongestionWeight > 0.7 ? randF(0.5, 0.75) : randF(0.8, 1.1);
+                const offMultiplier  = metroCongestionWeight > 0.7 ? randF(0.8, 1.2) : randF(1.2, 1.6);
+                
+                const timeMultiplier = ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 20)) ? peakMultiplier : 
+                                       ((hour >= 21 || hour <= 5)) ? offMultiplier : midMultiplier;
                 
                 avgSpeed = Math.min(liveBaseline.freeFlowSpeed, Math.max(5, liveBaseline.freeFlowSpeed * timeMultiplier));
                 congestion = determineCongestion(avgSpeed, liveBaseline.freeFlowSpeed);
                 vcount = congestion === 'Severe' ? rand(1500,2500) : congestion === 'Low' ? rand(100,400) : rand(500,1200);
+
+                // Metro boost: upgrade "Low" congestion to at least "Moderate" for metros during non-night hours
+                if (isMetroCity && congestion === 'Low' && hour >= 6 && hour <= 22) {
+                    congestion = Math.random() < metroCongestionWeight ? 'Moderate' : 'Low';
+                    avgSpeed = Math.min(avgSpeed, randF(25, 40));
+                }
             } else {
-                // FALLBACK: Standard simulation if not a top city or API failed
-                if ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 20)) {
-                    congestion = pick(['High','Severe','Moderate','High']);
-                    vcount = rand(800, 2500);
-                    avgSpeed = randF(8, 35);
-                } else if (hour >= 11 && hour <= 16) {
-                    congestion = pick(['Moderate','Low','Moderate','High']);
-                    vcount = rand(300, 1200);
-                    avgSpeed = randF(25, 65);
-                } else if (hour >= 21 || hour <= 5) {
-                    congestion = pick(['Low','Low','Low','Moderate']);
-                    vcount = rand(50, 400);
-                    avgSpeed = randF(45, road.speed_limit_kmph);
+                // FALLBACK: Standard simulation — metros get heavier congestion
+                if (isMetroCity) {
+                    // Metro fallback: heavy congestion bias reflecting real Indian metro traffic
+                    if ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 20)) {
+                        congestion = pick(['Severe','Severe','High','High','High','Moderate']);
+                        vcount = rand(1200, 2500);
+                        avgSpeed = randF(5, 22);
+                    } else if (hour >= 11 && hour <= 16) {
+                        congestion = pick(['High','High','Moderate','Moderate','Severe']);
+                        vcount = rand(600, 1800);
+                        avgSpeed = randF(15, 40);
+                    } else if (hour >= 21 || hour <= 5) {
+                        congestion = pick(['Low','Moderate','Moderate','Low']);
+                        vcount = rand(100, 600);
+                        avgSpeed = randF(35, road.speed_limit_kmph);
+                    } else {
+                        congestion = pick(['High','Moderate','High','Severe','Moderate']);
+                        vcount = rand(500, 1500);
+                        avgSpeed = randF(12, 35);
+                    }
                 } else {
-                    congestion = pick(CONGESTIONS);
-                    vcount = rand(200, 1000);
-                    avgSpeed = randF(20, 55);
+                    // Non-metro fallback: original logic
+                    if ((hour >= 8 && hour <= 10) || (hour >= 17 && hour <= 20)) {
+                        congestion = pick(['High','Severe','Moderate','High']);
+                        vcount = rand(800, 2500);
+                        avgSpeed = randF(8, 35);
+                    } else if (hour >= 11 && hour <= 16) {
+                        congestion = pick(['Moderate','Low','Moderate','High']);
+                        vcount = rand(300, 1200);
+                        avgSpeed = randF(25, 65);
+                    } else if (hour >= 21 || hour <= 5) {
+                        congestion = pick(['Low','Low','Low','Moderate']);
+                        vcount = rand(50, 400);
+                        avgSpeed = randF(45, road.speed_limit_kmph);
+                    } else {
+                        congestion = pick(CONGESTIONS);
+                        vcount = rand(200, 1000);
+                        avgSpeed = randF(20, 55);
+                    }
                 }
             }
 
@@ -438,6 +483,12 @@ async function seed() {
             if (weather !== 'Clear' && (!liveBaseline || !isLatest)) {
                 avgSpeed = Math.max(5, avgSpeed * 0.7);
                 if (congestion === 'Low') congestion = 'Moderate';
+            }
+
+            // Final metro safety net: ensure metros never have too much "Low" congestion during daytime
+            if (isMetroCity && congestion === 'Low' && hour >= 7 && hour <= 21 && Math.random() < metroCongestionWeight) {
+                congestion = 'Moderate';
+                avgSpeed = Math.min(avgSpeed, randF(20, 38));
             }
 
             trafficBatch.push(`(${road.road_id}, '${ts}', ${vcount}, ${avgSpeed.toFixed(2)}, '${congestion}', '${weather}')`);
