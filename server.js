@@ -65,8 +65,27 @@ app.use((err, req, res, next) => {
 });
 
 // ─── Start & Background Polling ───────────────
-app.listen(PORT, async () => {
-    console.log(`\n🚦  Smart Traffic Server running on http://localhost:${PORT}\n`);
+app.listen(PORT, '0.0.0.0', async () => {
+    // Find the local network IP
+    const os = require('os');
+    const nets = os.networkInterfaces();
+    let localIp = 'localhost';
+    
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+            if (net.family === 'IPv4' && !net.internal) {
+                localIp = net.address;
+                // Prefer Wi-Fi or Ethernet over VM adapters if possible
+                if (name.toLowerCase().includes('wi-fi') || name.toLowerCase().includes('ethernet')) {
+                    break;
+                }
+            }
+        }
+    }
+
+    console.log(`\n🚦  Smart Traffic Server running!`);
+    console.log(`   ➜ Local:   http://localhost:${PORT}`);
+    console.log(`   ➜ Network: http://${localIp}:${PORT} (Use this on other laptops)\n`);
     
     // Set up database pool for background polling
     const pool = require('./database/connection');

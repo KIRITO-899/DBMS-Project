@@ -111,83 +111,158 @@ const DBMS = {
     renderBTree() {
         const container = document.getElementById('btreeContainer');
         container.innerHTML = `
-            <div class="btree-level">
-                <span class="btree-level-label">Root</span>
+            <!-- B+ Tree Legend -->
+            <div class="btree-legend">
+                <div class="btree-legend-title">B+ Tree on <code>idx_readings_road_ts</code> — Index on <code>traffic_readings(road_id, timestamp)</code></div>
+                <div class="btree-legend-items">
+                    <div class="btree-legend-item"><span class="btree-legend-dot root-dot"></span> Root Node — Entry point of the tree</div>
+                    <div class="btree-legend-item"><span class="btree-legend-dot internal-dot"></span> Internal Node — Stores search keys only</div>
+                    <div class="btree-legend-item"><span class="btree-legend-dot leaf-dot"></span> Leaf Node — Stores keys + data pointers to rows</div>
+                    <div class="btree-legend-item"><span class="btree-legend-dot link-dot"></span> Sibling Pointer — Linked list for range scans</div>
+                </div>
+            </div>
+
+            <!-- SVG connector lines (drawn after render) -->
+            <svg class="btree-svg-connectors" id="btreeSvgConnectors"></svg>
+
+            <!-- ── LEVEL 0: Root ── -->
+            <div class="btree-level" data-level="0">
+                <div class="btree-level-sidebar">
+                    <span class="btree-level-badge root-bg">Level 0</span>
+                    <span class="btree-level-label">Root Node</span>
+                </div>
                 <div class="btree-nodes">
-                    <div class="btree-node root">
-                        <div class="btree-cell">road_id</div>
-                        <div class="btree-cell">→</div>
-                        <div class="btree-cell">timestamp</div>
+                    <div class="btree-node root" id="btNode-root">
+                        <div class="btree-cell-header">P<sub>0</sub></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">25</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell-header">P<sub>1</sub></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">75</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell-header">P<sub>2</sub></div>
                     </div>
                 </div>
             </div>
-            <div class="btree-connectors">
-                <div class="btree-connector"></div>
-                <div class="btree-connector"></div>
-                <div class="btree-connector"></div>
-            </div>
-            <div class="btree-level">
-                <span class="btree-level-label">Internal</span>
+
+            <!-- ── LEVEL 1: Internal ── -->
+            <div class="btree-level" data-level="1">
+                <div class="btree-level-sidebar">
+                    <span class="btree-level-badge internal-bg">Level 1</span>
+                    <span class="btree-level-label">Internal Nodes</span>
+                </div>
                 <div class="btree-nodes">
-                    <div class="btree-node internal">
-                        <div class="btree-cell">1</div>
-                        <div class="btree-cell">5</div>
-                        <div class="btree-cell">10</div>
+                    <div class="btree-node internal" id="btNode-int0">
+                        <div class="btree-cell key-cell"><span class="cell-key">5</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">10</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">20</span><span class="cell-label">road_id</span></div>
                     </div>
-                    <div class="btree-node internal">
-                        <div class="btree-cell">15</div>
-                        <div class="btree-cell">20</div>
-                        <div class="btree-cell">30</div>
+                    <div class="btree-node internal" id="btNode-int1">
+                        <div class="btree-cell key-cell"><span class="cell-key">35</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">50</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">60</span><span class="cell-label">road_id</span></div>
                     </div>
-                    <div class="btree-node internal">
-                        <div class="btree-cell">35</div>
-                        <div class="btree-cell">50</div>
-                        <div class="btree-cell">75</div>
+                    <div class="btree-node internal" id="btNode-int2">
+                        <div class="btree-cell key-cell"><span class="cell-key">100</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">150</span><span class="cell-label">road_id</span></div>
+                        <div class="btree-cell key-cell"><span class="cell-key">200</span><span class="cell-label">road_id</span></div>
                     </div>
                 </div>
             </div>
-            <div class="btree-connectors">
-                <div class="btree-connector"></div>
-                <div class="btree-connector"></div>
-                <div class="btree-connector"></div>
-                <div class="btree-connector"></div>
-                <div class="btree-connector"></div>
-            </div>
-            <div class="btree-level">
-                <span class="btree-level-label">Leaf</span>
-                <div class="btree-nodes">
-                    <div class="btree-node leaf">
-                        <div class="btree-cell">1→r1</div>
-                        <div class="btree-cell">2→r5</div>
-                        <div class="btree-cell">3→r3</div>
+
+            <!-- ── LEVEL 2: Leaf ── -->
+            <div class="btree-level" data-level="2">
+                <div class="btree-level-sidebar">
+                    <span class="btree-level-badge leaf-bg">Level 2</span>
+                    <span class="btree-level-label">Leaf Nodes</span>
+                </div>
+                <div class="btree-nodes btree-leaf-row">
+                    <div class="btree-node leaf" id="btNode-leaf0">
+                        <div class="btree-cell data-cell"><span class="cell-key">1</span><span class="cell-pointer">→ <em>NH-48 Mumbai</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">3</span><span class="cell-pointer">→ <em>Ring Road Delhi</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">5</span><span class="cell-pointer">→ <em>OMR Chennai</em></span></div>
                     </div>
-                    <div class="btree-node leaf">
-                        <div class="btree-cell">5→r2</div>
-                        <div class="btree-cell">7→r8</div>
-                        <div class="btree-cell">9→r4</div>
+                    <div class="btree-leaf-arrow">→</div>
+                    <div class="btree-node leaf" id="btNode-leaf1">
+                        <div class="btree-cell data-cell"><span class="cell-key">10</span><span class="cell-pointer">→ <em>MG Road Bangalore</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">15</span><span class="cell-pointer">→ <em>Marine Drive</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">20</span><span class="cell-pointer">→ <em>Howrah Bridge</em></span></div>
                     </div>
-                    <div class="btree-node leaf">
-                        <div class="btree-cell">10→r6</div>
-                        <div class="btree-cell">12→r7</div>
-                        <div class="btree-cell">14→r9</div>
+                    <div class="btree-leaf-arrow">→</div>
+                    <div class="btree-node leaf" id="btNode-leaf2">
+                        <div class="btree-cell data-cell"><span class="cell-key">25</span><span class="cell-pointer">→ <em>Necklace Road</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">35</span><span class="cell-pointer">→ <em>Ashram Road</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">50</span><span class="cell-pointer">→ <em>JLN Marg Jaipur</em></span></div>
                     </div>
-                    <div class="btree-node leaf">
-                        <div class="btree-cell">15→r10</div>
-                        <div class="btree-cell">18→r11</div>
-                        <div class="btree-cell">→next</div>
+                    <div class="btree-leaf-arrow">→</div>
+                    <div class="btree-node leaf" id="btNode-leaf3">
+                        <div class="btree-cell data-cell"><span class="cell-key">75</span><span class="cell-pointer">→ <em>VIP Road Kolkata</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">100</span><span class="cell-pointer">→ <em>SG Highway</em></span></div>
+                        <div class="btree-cell data-cell"><span class="cell-key">150</span><span class="cell-pointer">→ <em>BRTS Corridor</em></span></div>
                     </div>
-                    <div class="btree-node leaf">
-                        <div class="btree-cell">35→r15</div>
-                        <div class="btree-cell">40→r20</div>
-                        <div class="btree-cell">→next</div>
-                    </div>
+                    <div class="btree-leaf-arrow">→ NULL</div>
                 </div>
             </div>
-            <p style="text-align:center; color:var(--text-muted); font-size:0.78rem; margin-top:8px;">
-                InnoDB B+ Tree Index — Leaf nodes contain data pointers and are linked for range scans.
-                <br>Fan-out ≈ page_size / (key_size + pointer_size) ≈ 16KB / ~20B ≈ 800 entries/node
-            </p>
         `;
+
+        // Draw SVG connector lines after DOM render
+        requestAnimationFrame(() => this.drawBTreeConnectors());
+    },
+
+    drawBTreeConnectors() {
+        const svg = document.getElementById('btreeSvgConnectors');
+        const container = document.getElementById('btreeContainer');
+        if (!svg || !container) return;
+
+        const cRect = container.getBoundingClientRect();
+        svg.setAttribute('width', cRect.width);
+        svg.setAttribute('height', cRect.height);
+        svg.innerHTML = '';
+
+        const line = (x1, y1, x2, y2, color) => {
+            const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+            l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+            l.setAttribute('stroke', color); l.setAttribute('stroke-width', '1.5');
+            l.setAttribute('stroke-dasharray', '4 3');
+            l.setAttribute('opacity', '0.5');
+            svg.appendChild(l);
+        };
+
+        const getCenter = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: r.left + r.width / 2 - cRect.left, y: r.top + r.height / 2 - cRect.top };
+        };
+
+        const root = document.getElementById('btNode-root');
+        const ints = [document.getElementById('btNode-int0'), document.getElementById('btNode-int1'), document.getElementById('btNode-int2')];
+        const leaves = [document.getElementById('btNode-leaf0'), document.getElementById('btNode-leaf1'), document.getElementById('btNode-leaf2'), document.getElementById('btNode-leaf3')];
+
+        // Root → Internal connectors
+        if (root) {
+            const rC = getCenter(root);
+            const rBot = root.getBoundingClientRect().bottom - cRect.top;
+            ints.forEach(intNode => {
+                if (!intNode) return;
+                const iC = getCenter(intNode);
+                const iTop = intNode.getBoundingClientRect().top - cRect.top;
+                line(rC.x, rBot, iC.x, iTop, '#7c4dff');
+            });
+        }
+
+        // Internal → Leaf connectors
+        // int0 → leaf0, leaf1;  int1 → leaf1, leaf2;  int2 → leaf2, leaf3
+        const intLeafMap = [[0, 1], [1, 2], [2, 3]];
+        ints.forEach((intNode, idx) => {
+            if (!intNode) return;
+            const iC = getCenter(intNode);
+            const iBot = intNode.getBoundingClientRect().bottom - cRect.top;
+            intLeafMap[idx].forEach(lIdx => {
+                const leafNode = leaves[lIdx];
+                if (!leafNode) return;
+                const lC = getCenter(leafNode);
+                const lTop = leafNode.getBoundingClientRect().top - cRect.top;
+                line(iC.x, iBot, lC.x, lTop, '#00e5ff');
+            });
+        });
     },
 
     renderIndexTable(indexes) {
