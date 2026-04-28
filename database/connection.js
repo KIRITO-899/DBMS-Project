@@ -31,12 +31,14 @@ pool.query = async function(sql, values) {
         if (store && store.ignoreIndex) {
             // Strip any explicit indexes if they exist (just in case)
             // Inject IGNORE INDEX for the main heavy tables
+            // Only inject IGNORE INDEX on top-level FROM clauses — NOT inside sub-queries.
+            // The negative lookbehind (?<!\() ensures we don't touch "(SELECT ... FROM traffic_readings)".
+            const ignoreHint = 'IGNORE INDEX (idx_traffic_timestamp, idx_traffic_road_congestion, idx_traffic_covering)';
+            const topLevelFromRe = /(?<!\()\bFROM\s+traffic_readings(\s+tr\b)?(?!\s+IGNORE)/ig;
             if (typeof sql === 'string') {
-                sql = sql.replace(/FROM\s+traffic_readings(\s+tr\b)?(?!\s+IGNORE)/ig, (m, p1) => `FROM traffic_readings${p1 || ''} IGNORE INDEX (idx_traffic_timestamp, idx_traffic_road_congestion, idx_traffic_covering)`);
-                sql = sql.replace(/FROM\s+accidents(\s+a\b)?(?!\s+IGNORE)/ig, (m, p1) => `FROM accidents${p1 || ''} IGNORE INDEX (idx_accident_severity_date)`);
+                sql = sql.replace(topLevelFromRe, (m, p1) => `FROM traffic_readings${p1 || ''} ${ignoreHint}`);
             } else if (sql && typeof sql.sql === 'string') {
-                sql.sql = sql.sql.replace(/FROM\s+traffic_readings(\s+tr\b)?(?!\s+IGNORE)/ig, (m, p1) => `FROM traffic_readings${p1 || ''} IGNORE INDEX (idx_traffic_timestamp, idx_traffic_road_congestion, idx_traffic_covering)`);
-                sql.sql = sql.sql.replace(/FROM\s+accidents(\s+a\b)?(?!\s+IGNORE)/ig, (m, p1) => `FROM accidents${p1 || ''} IGNORE INDEX (idx_accident_severity_date)`);
+                sql.sql = sql.sql.replace(topLevelFromRe, (m, p1) => `FROM traffic_readings${p1 || ''} ${ignoreHint}`);
             }
         }
     }

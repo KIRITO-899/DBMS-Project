@@ -114,10 +114,7 @@ updateClock();
 const pageTitles = {
     dashboard: 'Dashboard',
     traffic:   'Traffic Monitor',
-    accidents: 'Accident Analytics',
-    transport: 'Public Transport',
-    dbms:      'DBMS Concepts',
-    settings:  'Settings'
+    dbms:      'DBMS Concepts'
 };
 
 let currentPage = 'dashboard';
@@ -160,12 +157,22 @@ async function switchPage(page) {
     const pageEl = document.getElementById(`page-${page}`);
     if (pageEl) pageEl.classList.add('active');
 
-    // Reset DBMS sub-tab visibility if we are LEAVING DBMS page
+    // Reset DBMS sub-tab visibility when LEAVING the DBMS page
     if (page !== 'dbms') {
         document.querySelectorAll('.dbms-tab-content').forEach(c => {
             c.classList.remove('active');
             if (window.gsap) gsap.killTweensOf(c.querySelectorAll('*'));
         });
+    } else {
+        // Arriving at DBMS page: ensure the active tab's content is visible.
+        // On a repeat visit pageLoaded['dbms'] is true so DBMS.init() won't
+        // re-run, meaning no tab content has the 'active' class. We restore it
+        // based on whichever .dbms-tab currently has the 'active' class.
+        const activeTab = document.querySelector('.dbms-tab.active');
+        const targetId  = activeTab ? `tabContent-${activeTab.dataset.tab}` : 'tabContent-indexes';
+        document.querySelectorAll('.dbms-tab-content').forEach(c => c.classList.remove('active'));
+        const targetContent = document.getElementById(targetId);
+        if (targetContent) targetContent.classList.add('active');
     }
 
     // Update title
@@ -219,10 +226,7 @@ async function loadPageData(page) {
     switch (page) {
         case 'dashboard': await loadDashboard(); break;
         case 'traffic':   await loadTraffic();   break;
-        case 'accidents': await loadAccidents(); break;
-        case 'transport': await loadTransport(); break;
         case 'dbms':      await DBMS.init();     break;
-        case 'settings':  await loadSettings();  break;
     }
 }
 
@@ -239,11 +243,8 @@ async function loadDashboard() {
         // KPI Cards — cast MySQL BigInt/Decimal strings to numbers
         const kpis = [
             { label: 'Total Roads',       value: Number(overview.total_roads),      color: 'cyan',   sub: `across ${overview.total_cities} cities` },
-            { label: 'Traffic Readings',  value: Number(overview.total_readings),   color: 'purple', sub: 'sensor data points' },
-            { label: 'Accidents Recorded',value: Number(overview.total_accidents),  color: 'red',    sub: 'in the last 2 years' },
             { label: 'Avg Speed',         value: parseFloat(overview.avg_speed) || 0, color: 'green',  sub: 'km/h across all roads', isSuffix: true, suffix: ' km/h' },
-            { label: 'Congestion Rate',   value: parseFloat(overview.congestion_rate) || 0, color: 'orange', sub: 'high + severe readings', isSuffix: true, suffix: '%' },
-            { label: 'Daily Ridership',   value: Number(overview.daily_ridership),  color: 'purple', sub: 'public transport users' },
+            { label: 'Congestion Rate',   value: parseFloat(overview.congestion_rate) || 0, color: 'orange', sub: 'high + severe readings', isSuffix: true, suffix: '%' }
         ];
 
         const kpiGrid = document.getElementById('kpiGrid');
@@ -319,10 +320,11 @@ async function loadTraffic() {
             }
         });
 
-        // Refresh button
-        document.getElementById('trafficRefreshBtn').addEventListener('click', () => {
+        // Refresh button — show toast feedback after data reloads
+        document.getElementById('trafficRefreshBtn').addEventListener('click', async () => {
             const cityId = citySelect.value;
-            refreshTrafficPage(cityId);
+            await refreshTrafficPage(cityId);
+            showRefreshToast('✓ Data refreshed');
         });
 
         // Initial load: pick first metro city or first city
@@ -404,7 +406,6 @@ function renderTrafficKpis(data) {
         { label: 'Avg Speed',       value: parseFloat(data.avg_speed) || 0,  color: 'green',  icon: '⚡', suffix: ' km/h' },
         { label: 'Peak Vehicles',   value: Number(data.peak_vehicles),   color: 'purple', icon: '🚗' },
         { label: 'Congestion Rate', value: parseFloat(data.congestion_rate) || 0, color: 'red', icon: '🔴', suffix: '%' },
-        { label: 'Total Readings',  value: Number(data.total_readings),  color: 'orange', icon: '📊' },
         { label: 'Dominant Weather', value: data.dominant_weather || 'Clear',  color: 'blue',  icon: weatherIcons[data.dominant_weather] || '☀️', isText: true },
     ];
 
@@ -500,289 +501,8 @@ async function loadLiveTraffic(cityId) {
     }
 }
 
-// ─── Accidents ───────────────────────────────────
-async function loadAccidents() {
-    try {
-        const [summary, causes, trend, hotspots, timeData, stateData, states, liveData] = await Promise.all([
-            api('/api/accidents/summary'),
-            api('/api/accidents/by-cause'),
-            api('/api/accidents/trend'),
-            api('/api/accidents/hotspots'),
-            api('/api/accidents/by-time'),
-            api('/api/accidents/by-state'),
-            api('/api/accidents/states'),
-            api('/api/accidents/live')
-        ]);
 
-        // Populate state dropdown
-        const stateSelect = document.getElementById('accidentStateSelect');
-        stateSelect.innerHTML = '<option value="">All States</option>' +
-            states.map(s => `<option value="${s}">${s}</option>`).join('');
 
-        // Wire filter button
-        document.getElementById('accidentFilterBtn').onclick = () => applyAccidentFilter();
-
-        // KPI Cards
-        const kpis = [
-            { label: 'Total Accidents', value: summary.total_accidents, color: 'red' },
-            { label: 'Fatal',           value: summary.fatal,            color: 'red' },
-            { label: 'Major',           value: summary.major,            color: 'orange' },
-            { label: 'Minor',           value: summary.minor,            color: 'green' },
-            { label: 'Total Casualties',value: summary.total_casualties,  color: 'red' },
-            { label: 'Fatality Rate',   value: summary.fatality_rate + '%', color: 'orange' },
-        ];
-
-        const kpiContainer = document.getElementById('accidentKpis');
-        kpiContainer.innerHTML = kpis.map((k, i) => `
-            <div class="kpi-card ${k.color} animate-in stagger-${i+1}">
-                <div class="kpi-label">${k.label}</div>
-                <div class="kpi-value ${k.color}">${typeof k.value === 'number' ? formatNum(k.value) : k.value}</div>
-            </div>
-        `).join('');
-
-        // Trigger KPI card entrance animation
-        if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#accidentKpis .kpi-card', { y: 35, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.08, ease: 'power4.out', clearProps: 'all' });
-        } else {
-            kpiContainer.querySelectorAll('.kpi-card').forEach(el => el.style.opacity = '1');
-        }
-
-        // Charts
-        renderAccidentCauses(causes);
-        renderSeverityChart(summary);
-        renderAccidentTrend(trend);
-        renderAccidentTimeChart(timeData);
-        renderAccidentStateChart(stateData);
-
-        // Hotspot table
-        renderHotspotTable(hotspots, liveData);
-    } catch (err) {
-        console.error('Accidents load error:', err);
-    }
-}
-
-async function applyAccidentFilter() {
-    const state    = document.getElementById('accidentStateSelect').value;
-    const severity = document.getElementById('accidentSeveritySelect').value;
-    const btn = document.getElementById('accidentFilterBtn');
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
-    try {
-        let params = [];
-        if (state) params.push(`state=${encodeURIComponent(state)}`);
-        if (severity) params.push(`severity=${encodeURIComponent(severity)}`);
-        const qs = params.length > 0 ? '?' + params.join('&') : '';
-        const limitQs = params.length > 0 ? qs + '&limit=20' : '?limit=20';
-        
-        const [summary, causes, trend, hotspots, timeData, liveData] = await Promise.all([
-            api(`/api/accidents/summary${qs}`),
-            api(`/api/accidents/by-cause${qs}`),
-            api(`/api/accidents/trend${qs}`),
-            api(`/api/accidents/hotspots${limitQs}`),
-            api(`/api/accidents/by-time${qs}`),
-            api(`/api/accidents/live${qs}`)
-        ]);
-
-        // Re-render KPIs
-        const kpis = [
-            { label: 'Total Accidents', value: summary.total_accidents, color: 'red' },
-            { label: 'Fatal',           value: summary.fatal,            color: 'red' },
-            { label: 'Major',           value: summary.major,            color: 'orange' },
-            { label: 'Minor',           value: summary.minor,            color: 'green' },
-            { label: 'Total Casualties',value: summary.total_casualties,  color: 'red' },
-            { label: 'Fatality Rate',   value: summary.fatality_rate + '%', color: 'orange' },
-        ];
-        const kpiContainer = document.getElementById('accidentKpis');
-        kpiContainer.innerHTML = kpis.map((k, i) => `
-            <div class="kpi-card ${k.color} animate-in">
-                <div class="kpi-label">${k.label}</div>
-                <div class="kpi-value ${k.color}">${typeof k.value === 'number' ? formatNum(k.value) : k.value}</div>
-            </div>
-        `).join('');
-
-        if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#accidentKpis .animate-in', {y:30, opacity:0, scale:0.95}, {y:0, opacity:1, scale:1, duration:0.6, stagger:0.06, ease:'power3.out', clearProps:'all'});
-        } else {
-            document.querySelectorAll('#accidentKpis .animate-in').forEach(e => e.style.opacity = 1);
-        }
-
-        // Re-render charts
-        renderAccidentCauses(causes);
-        renderSeverityChart(summary);
-        renderAccidentTrend(trend);
-        renderAccidentTimeChart(timeData);
-
-        // Re-render table
-        renderHotspotTable(hotspots, liveData);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Apply Filter`;
-    }
-}
-
-function renderHotspotTable(hotspots, liveData = []) {
-    const tbody = document.getElementById('hotspotTableBody');
-    const badge = document.getElementById('liveAccidentsBadge');
-    
-    let html = '';
-
-    // If we have live data, show the badge and prepend rows
-    if (liveData && liveData.length > 0) {
-        if (badge) badge.style.display = 'inline-block';
-        html += liveData.map(l => `
-            <tr style="background-color: rgba(255, 23, 68, 0.05); border-left: 2px solid var(--accent-red);">
-                <td style="font-family:var(--font-mono); color:var(--accent-red); font-size: 0.8rem" class="pulse">LIVE</td>
-                <td style="color:var(--text-primary); font-weight:500">${l.road_name}</td>
-                <td>${l.city_name}</td>
-                <td style="font-style:italic">Live API Data</td>
-                <td style="font-family:var(--font-mono); color:var(--accent-orange); font-weight:600">1 (Active)</td>
-                <td style="font-family:var(--font-mono); color:var(${l.severity === 'Fatal' ? '--accent-red' : l.severity === 'Major' ? '--accent-orange' : '--accent-cyan'}); font-weight:600">${l.severity}</td>
-                <td style="font-family:var(--font-mono)">0</td>
-                <td style="font-size:0.72rem; color:var(--accent-red); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="${l.description}">🚨 ${l.description}</td>
-            </tr>
-        `).join('');
-    } else {
-        if (badge) badge.style.display = 'none';
-    }
-
-    // Append regular hotspot data
-    html += hotspots.map((h, i) => `
-        <tr>
-            <td style="font-family:var(--font-mono); color:var(--text-muted)">${i+1}</td>
-            <td style="color:var(--text-primary); font-weight:500">${h.road_name}</td>
-            <td>${h.city_name}</td>
-            <td>${h.state_name}</td>
-            <td style="font-family:var(--font-mono); color:var(--accent-orange); font-weight:600">${h.total_accidents}</td>
-            <td style="font-family:var(--font-mono); color:var(--accent-red); font-weight:600">${h.fatal_count}</td>
-            <td style="font-family:var(--font-mono)">${h.total_casualties}</td>
-            <td style="font-size:0.72rem; color:var(--text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="${h.causes || ''}">${h.causes || '—'}</td>
-        </tr>
-    `).join('');
-    
-    tbody.innerHTML = html;
-}
-
-// ─── Transport ───────────────────────────────────
-async function loadTransport() {
-    try {
-        const [summary, routes] = await Promise.all([
-            api('/api/analytics/transport-summary'),
-            api('/api/analytics/transport')
-        ]);
-
-        // KPI cards — cast all MySQL BigInt/Decimal strings to numbers
-        const totalRidership = summary.byType.reduce((s, t) => s + Number(t.total_ridership), 0);
-        const totalRoutes    = summary.byType.reduce((s, t) => s + Number(t.routes), 0);
-        const avgFreq        = (summary.byType.reduce((s, t) => s + parseFloat(t.avg_frequency) * Number(t.routes), 0) / Math.max(totalRoutes, 1)).toFixed(1);
-        const avgStops       = (summary.byType.reduce((s, t) => s + parseFloat(t.avg_stops) * Number(t.routes), 0) / Math.max(totalRoutes, 1)).toFixed(1);
-
-        const transportKpis = [
-            { label: 'Total Routes',     value: totalRoutes,                               color: 'cyan',   suffix: '' },
-            { label: 'Daily Ridership',  value: totalRidership,                            color: 'purple', suffix: '' },
-            { label: 'Avg Frequency',    value: isNaN(parseFloat(avgFreq)) ? 0 : avgFreq,  color: 'green',  suffix: ' min' },
-            { label: 'Avg Stops/Route',  value: isNaN(parseFloat(avgStops)) ? 0 : avgStops, color: 'orange', suffix: '' },
-        ];
-        const kpiContainer = document.getElementById('transportKpis');
-        kpiContainer.innerHTML = transportKpis.map((k, i) => `
-            <div class="kpi-card ${k.color} animate-in stagger-${i+1}">
-                <div class="kpi-label">${k.label}</div>
-                <div class="kpi-value ${k.color}">${isNaN(Number(k.value)) ? '—' : formatNum(Number(k.value))}${k.suffix}</div>
-            </div>
-        `).join('');
-
-        // Trigger KPI card entrance animation
-        if (window.gsap && localStorage.getItem('pref_animations') !== 'false') {
-            gsap.fromTo('#transportKpis .kpi-card', { y: 35, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.08, ease: 'power4.out', clearProps: 'all' });
-        } else {
-            kpiContainer.querySelectorAll('.kpi-card').forEach(el => el.style.opacity = '1');
-        }
-
-        renderTransportType(summary.byType);
-        renderTransportCity(summary.byCity);
-        renderTransportFreqChart(summary.byType);
-        renderTransportTable(routes);
-
-        // Wire filter button
-        document.getElementById('transportFilterBtn').onclick = () => applyTransportFilter();
-    } catch (err) {
-        console.error('Transport load error:', err);
-    }
-}
-
-async function applyTransportFilter() {
-    const type = document.getElementById('transportTypeSelect').value;
-    const btn  = document.getElementById('transportFilterBtn');
-    btn.disabled = true;
-    btn.textContent = 'Loading…';
-    try {
-        const url = type ? `/api/analytics/transport?type=${encodeURIComponent(type)}` : '/api/analytics/transport';
-        const routes = await api(url);
-        renderTransportTable(routes);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter`;
-    }
-}
-
-function renderTransportTable(routes) {
-    const badge = document.getElementById('transportRouteCount');
-    if (badge) badge.textContent = `${routes.length} Routes`;
-
-    const typeEmoji = { Bus: '🚌', Metro: '🚇', Tram: '🚋', Ferry: '⛴️' };
-    const tbody = document.getElementById('transportTableBody');
-    tbody.innerHTML = routes.map(r => {
-        const typeBadge = `badge-${r.transport_type.toLowerCase()}`;
-        // Efficiency: ridership per stop per frequency unit (higher = better)
-        const eff = r.stops > 0 && r.frequency_mins > 0
-            ? Math.round(r.daily_ridership / r.stops / (r.frequency_mins / 10))
-            : 0;
-        const effColor = eff > 500 ? 'var(--accent-green)' : eff > 200 ? 'var(--accent-cyan)' : 'var(--accent-orange)';
-        const effLabel = eff > 500 ? 'High' : eff > 200 ? 'Medium' : 'Low';
-        return `
-            <tr>
-                <td style="color:var(--text-primary); font-weight:500">${r.route_name}</td>
-                <td>${r.city_name}</td>
-                <td style="color:var(--text-muted); font-size:0.8rem">${r.state_name}</td>
-                <td><span class="badge ${typeBadge}">${typeEmoji[r.transport_type] || ''} ${r.transport_type}</span></td>
-                <td style="font-family:var(--font-mono)">${r.stops}</td>
-                <td style="font-family:var(--font-mono); color:var(--accent-cyan)">${r.daily_ridership?.toLocaleString()}</td>
-                <td style="font-family:var(--font-mono)">${r.frequency_mins} min</td>
-                <td><span class="badge" style="color:${effColor}; border-color:${effColor}40; background:${effColor}15">${effLabel}</span></td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// ─── Settings ────────────────────────────────────
-async function loadSettings() {
-    try {
-        const data = await api('/api/system/status');
-        
-        const formatStatus = (elId, val, okVal) => {
-            const el = document.getElementById(elId);
-            if (!el) return;
-            el.textContent = val;
-            el.className = 'settings-list-value ' + (val === okVal ? 'active' : (val === 'Missing' || val === 'Not Configured' || val.includes('Error') ? 'danger' : ''));
-        };
-
-        formatStatus('statusDbConn', data.database.status, 'Connected');
-        document.getElementById('statusDbName').textContent = data.database.name;
-        document.getElementById('statusDbRecords').textContent = Number(data.database.total_records).toLocaleString();
-        
-        formatStatus('statusApiTomTom', data.api.tomtom, 'Active');
-        
-        document.getElementById('statusNodeVersion').textContent = data.server.nodeVersion;
-        
-        const up = data.server.uptime;
-        const h = Math.floor(up / 3600), m = Math.floor(up % 3600 / 60), s = Math.floor(up % 60);
-        document.getElementById('statusServerUptime').textContent = `${h}h ${m}m ${s}s`;
-
-    } catch (err) {
-        console.error('Settings load error:', err);
-        document.getElementById('statusDbConn').textContent = 'Error';
-        document.getElementById('statusDbConn').className = 'settings-list-value danger';
-    }
-}
 
 function applyPreferences() {
     const highContrast = localStorage.getItem('pref_highContrast') === 'true';
@@ -946,9 +666,52 @@ async function init() {
     }
 }
 
+// ════════════════════════════════════════════════════
+// Back-to-Top Button
+// ════════════════════════════════════════════════════
+function initBackToTop() {
+    const btn = document.getElementById('backToTopBtn');
+    if (!btn) return;
+
+    const mainContent = document.getElementById('mainContent');
+
+    // Show/hide the button based on scroll position of the main content area
+    mainContent.addEventListener('scroll', () => {
+        if (mainContent.scrollTop > 300) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
+    }, { passive: true });
+
+    // Scroll back to top smoothly on click
+    btn.addEventListener('click', () => {
+        mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
+
+// ════════════════════════════════════════════════════
+// Refresh Toast
+// ════════════════════════════════════════════════════
+let _toastTimer = null;
+function showRefreshToast(msg = '✓ Data refreshed') {
+    const toast = document.getElementById('refreshToast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
 // Start the app
 document.addEventListener('DOMContentLoaded', () => {
+    // Redirect stale deep-link URLs (e.g. /settings) back to root
+    if (window.location.pathname !== '/') {
+        window.history.replaceState(null, '', '/');
+    }
+
     applyPreferences();
     applyTheme();
+    initBackToTop();
     init();
 });

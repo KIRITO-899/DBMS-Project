@@ -12,7 +12,6 @@ const DBMS = {
     async init() {
         this.setupTabs();
         await this.loadIndexes();
-        await this.loadQueries();
         await this.loadCostEstimation();
         this.initRace();
     },
@@ -384,101 +383,7 @@ const DBMS = {
         });
     },
 
-    // ─── Load & Render Queries (EXPLAIN) ─────────────
-    async loadQueries() {
-        try {
-            const data = await api('/api/dbms/queries');
-            this.queryData = data;
-            this.renderQueryList(data);
-        } catch (err) {
-            console.error('Failed to load queries:', err);
-        }
-    },
 
-    renderQueryList(queries) {
-        const list = document.getElementById('queryList');
-        list.innerHTML = queries.map(q => `
-            <div class="query-item" data-query-id="${q.id}" onclick="DBMS.selectQuery(${q.id})">
-                <div class="query-num">${q.id}</div>
-                <div class="query-info">
-                    <div class="query-name">${q.name}</div>
-                    <div class="query-desc">${q.description}</div>
-                </div>
-                <span class="query-level-badge l${q.indexLevel}">Level ${q.indexLevel}</span>
-            </div>
-        `).join('');
-    },
-
-    async selectQuery(queryId) {
-        // Highlight selected
-        document.querySelectorAll('.query-item').forEach(el => el.classList.remove('active'));
-        document.querySelector(`.query-item[data-query-id="${queryId}"]`)?.classList.add('active');
-
-        try {
-            const data = await api(`/api/dbms/explain/${queryId}`);
-            this.renderExplainResults(data);
-        } catch (err) {
-            console.error('Failed to load EXPLAIN:', err);
-        }
-    },
-
-    renderExplainResults(data) {
-        const container = document.getElementById('explainResults');
-        const { query, withIndex, withoutIndex } = data;
-
-        const renderExplainTable = (rows) => {
-            if (!rows || rows.length === 0) return '<p style="color:var(--text-muted)">No data</p>';
-            const cols = ['id', 'select_type', 'table', 'type', 'possible_keys', 'key', 'key_len', 'rows', 'filtered', 'Extra'];
-            return `
-                <table class="explain-table">
-                    <thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-                    <tbody>
-                        ${rows.map(row => `<tr>${cols.map(c => {
-                            let cls = '';
-                            if (c === 'key' && row[c]) cls = 'highlight';
-                            if (c === 'rows' && row[c] > 1000) cls = 'warn';
-                            if (c === 'type' && row[c] === 'ALL') cls = 'warn';
-                            return `<td class="${cls}">${row[c] !== null && row[c] !== undefined ? row[c] : 'NULL'}</td>`;
-                        }).join('')}</tr>`).join('')}
-                    </tbody>
-                </table>
-            `;
-        };
-
-        const rowsW  = withIndex.reduce((s, r) => s + (r.rows || 0), 0);
-        const rowsWO = withoutIndex.reduce((s, r) => s + (r.rows || 0), 0);
-        const improvement = rowsWO > 0 ? ((1 - rowsW / rowsWO) * 100).toFixed(1) : 0;
-
-        container.innerHTML = `
-            <div class="explain-card animate-in">
-                <h4>📝 SQL Query</h4>
-                <div class="sql-block">${query.sql}</div>
-                <p style="font-size:0.82rem; color:var(--text-secondary);">
-                    <strong>Index Used:</strong> <span style="color:var(--accent-cyan)">${query.indexUsed}</span>
-                    &nbsp;&nbsp;|&nbsp;&nbsp;
-                    <strong>Index Level:</strong> <span class="query-level-badge l${query.indexLevel}">Level ${query.indexLevel}</span>
-                </p>
-            </div>
-
-            <div class="explain-card animate-in stagger-1">
-                <h4><span class="dot-green">●</span> WITH Index — EXPLAIN Output</h4>
-                ${renderExplainTable(withIndex)}
-                <p style="margin-top:12px; font-size:0.82rem; color:var(--text-secondary);">
-                    Rows examined: <strong style="color:var(--accent-green)">${rowsW.toLocaleString()}</strong>
-                </p>
-            </div>
-
-            <div class="explain-card animate-in stagger-2">
-                <h4><span class="dot-red">●</span> WITHOUT Index (IGNORE INDEX) — EXPLAIN Output</h4>
-                ${renderExplainTable(withoutIndex)}
-                <p style="margin-top:12px; font-size:0.82rem; color:var(--text-secondary);">
-                    Rows examined: <strong style="color:var(--accent-red)">${rowsWO.toLocaleString()}</strong>
-                    &nbsp;&nbsp;|&nbsp;&nbsp;
-                    Performance improvement with index: <strong style="color:var(--accent-green)">${improvement}%</strong>
-                </p>
-            </div>
-        `;
-    },
 
     // ─── Load & Render Cost Estimation ───────────────
     async loadCostEstimation() {

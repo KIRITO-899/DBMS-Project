@@ -48,19 +48,7 @@ const QUERIES = [
               ORDER BY reading_timestamp DESC
               LIMIT 100`,
         indexUsed: 'idx_traffic_covering'
-    },
-    {
-        id: 4,
-        name: 'Accident Date Range + Severity (Level 2)',
-        description: 'Composite index on (severity, accident_date) — filters both predicates efficiently using dynamic dates.',
-        indexLevel: 2,
-        sql: `SELECT * FROM accidents
-              WHERE severity = 'Fatal'
-                AND accident_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)`,
-        sqlNoIndex: `SELECT * FROM accidents IGNORE INDEX (idx_accident_severity_date)
-              WHERE severity = 'Fatal'
-                AND accident_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)`,
-        indexUsed: 'idx_accident_severity_date'
+
     },
     {
         id: 5,
@@ -141,48 +129,7 @@ router.get('/indexes', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
-// ────────────────────────────────────────────────────
-// GET /api/dbms/queries — List predefined queries
-// ────────────────────────────────────────────────────
-router.get('/queries', async (req, res, next) => {
-    try {
-        res.json(QUERIES.map(q => ({
-            id: q.id,
-            name: q.name,
-            description: q.description,
-            indexLevel: q.indexLevel,
-            indexUsed: q.indexUsed,
-            sql: q.sql.trim()
-        })));
-    } catch (err) { next(err); }
-});
 
-// ────────────────────────────────────────────────────
-// GET /api/dbms/explain/:queryId — EXPLAIN a query
-// ────────────────────────────────────────────────────
-router.get('/explain/:queryId', async (req, res, next) => {
-    try {
-        const qid = parseInt(req.params.queryId);
-        const query = QUERIES.find(q => q.id === qid);
-        if (!query) return res.status(404).json({ error: 'Query not found' });
-
-        const [explainWith]    = await pool.query(`EXPLAIN FORMAT=TRADITIONAL ${query.sql}`);
-        const [explainWithout] = await pool.query(`EXPLAIN FORMAT=TRADITIONAL ${query.sqlNoIndex}`);
-
-        res.json({
-            query: {
-                id: query.id,
-                name: query.name,
-                description: query.description,
-                indexLevel: query.indexLevel,
-                sql: query.sql.trim(),
-                indexUsed: query.indexUsed
-            },
-            withIndex: explainWith,
-            withoutIndex: explainWithout
-        });
-    } catch (err) { next(err); }
-});
 
 // ────────────────────────────────────────────────────
 // GET /api/dbms/cost-estimation — Full cost comparison

@@ -170,7 +170,7 @@ function renderCongestionDonut(data) {
     const total = data.reduce((sum, d) => sum + d.count, 0);
 
     legendContainer.innerHTML = data.map((d, i) => {
-        const pct = ((d.count / total) * 100).toFixed(1);
+        const pct = total > 0 ? ((d.count / total) * 100).toFixed(1) : "0.0";
         const color = ChartConfig.congestionColors[d.congestion_level];
         const badgeClass = `badge-${d.congestion_level.toLowerCase()}`;
         return `
@@ -242,8 +242,18 @@ function renderWeatherChart(data) {
         },
         options: {
             ...ChartConfig.barOptions(),
+            layout: { padding: { bottom: 8 } },
             scales: {
                 ...ChartConfig.barOptions().scales,
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: '#8b8fa8',
+                        font: { size: 12 },
+                        maxRotation: 0,
+                        minRotation: 0,
+                    }
+                },
                 y: {
                     ...ChartConfig.barOptions().scales.y,
                     position: 'left',
@@ -258,6 +268,7 @@ function renderWeatherChart(data) {
             }
         }
     });
+
 }
 
 function renderCityComparison(data) {
@@ -643,343 +654,7 @@ function renderPeakHours(data) {
     });
 }
 
-// ────────────────────────────────────────────────────
-// Accident Page Charts
-// ────────────────────────────────────────────────────
-function renderAccidentCauses(data) {
-    destroyChart('accidentCauseChart');
-    const ctx = document.getElementById('accidentCauseChart').getContext('2d');
-    const top = data.slice(0, 8);
-    const gradient = ChartConfig.createGradient(ctx, '#ff174440', '#ff910010');
 
-    chartInstances.accidentCauseChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: top.map(d => d.cause),
-            datasets: [{
-                label: 'Incidents',
-                data: top.map(d => d.count),
-                backgroundColor: gradient,
-                borderColor: '#ff1744',
-                borderWidth: 1,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            ...ChartConfig.barOptions(),
-            indexAxis: 'y',
-            plugins: { ...ChartConfig.barOptions().plugins, legend: { display: false } },
-            scales: {
-                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5c6078' } },
-                y: { grid: { display: false }, ticks: { color: '#8b8fa8', font: { size: 10 } } }
-            }
-        }
-    });
-}
-
-function renderSeverityChart(data) {
-    destroyChart('severityChart');
-    const ctx = document.getElementById('severityChart').getContext('2d');
-
-    const severityColors = { Minor: '#00e676', Major: '#ff9100', Fatal: '#ff1744' };
-    const labels = ['Minor', 'Major', 'Fatal'];
-    const values = labels.map(l => data[l.toLowerCase()] || 0);
-
-    chartInstances.severityChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: labels.map(l => severityColors[l]),
-                borderColor: 'rgba(6,7,13,0.8)',
-                borderWidth: 3,
-                hoverOffset: 8
-            }]
-        },
-        options: ChartConfig.pieOptions()
-    });
-}
-
-function renderAccidentTrend(data) {
-    destroyChart('accidentTrendChart');
-    const ctx = document.getElementById('accidentTrendChart').getContext('2d');
-
-    chartInstances.accidentTrendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.map(d => d.month),
-            datasets: [
-                {
-                    label: 'Total',
-                    data: data.map(d => d.total),
-                    borderColor: ChartConfig.colors.cyan,
-                    backgroundColor: ChartConfig.colors.cyan + '15',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 3,
-                },
-                {
-                    label: 'Fatal',
-                    data: data.map(d => d.fatal),
-                    borderColor: ChartConfig.colors.red,
-                    backgroundColor: ChartConfig.colors.red + '10',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 3,
-                },
-                {
-                    label: 'Major',
-                    data: data.map(d => d.major),
-                    borderColor: ChartConfig.colors.orange,
-                    tension: 0.4,
-                    pointRadius: 2,
-                    borderDash: [4, 4],
-                }
-            ]
-        },
-        options: ChartConfig.commonOptions()
-    });
-}
-
-window.toggleTrendScale = function() {
-    const chart = chartInstances.accidentTrendChart;
-    if (!chart) return;
-    
-    // Default to linear if undefined
-    const currentType = chart.options.scales?.y?.type || 'linear';
-    const newType = currentType === 'linear' ? 'logarithmic' : 'linear';
-    
-    if (!chart.options.scales) chart.options.scales = {};
-    if (!chart.options.scales.y) chart.options.scales.y = {};
-    
-    chart.options.scales.y.type = newType;
-    chart.update();
-};
-
-// ────────────────────────────────────────────────────
-// Transport Page Charts
-// ────────────────────────────────────────────────────
-function renderTransportType(data) {
-    destroyChart('transportTypeChart');
-    const ctx = document.getElementById('transportTypeChart').getContext('2d');
-
-    const typeColors = {
-        Bus: ChartConfig.colors.green,
-        Metro: ChartConfig.colors.cyan,
-        Tram: ChartConfig.colors.orange,
-        Ferry: ChartConfig.colors.blue,
-    };
-
-    chartInstances.transportTypeChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: data.map(d => d.transport_type),
-            datasets: [{
-                data: data.map(d => d.total_ridership),
-                backgroundColor: data.map(d => typeColors[d.transport_type] || ChartConfig.colors.purple),
-                borderColor: 'rgba(6,7,13,0.8)',
-                borderWidth: 3,
-                hoverOffset: 8
-            }]
-        },
-        options: ChartConfig.pieOptions()
-    });
-}
-
-function renderTransportCity(data) {
-    destroyChart('transportCityChart');
-    const ctx = document.getElementById('transportCityChart').getContext('2d');
-    const top = data.slice(0, 10);
-    const gradient = ChartConfig.createGradient(ctx, '#7c4dff40', '#00e5ff10');
-
-    chartInstances.transportCityChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: top.map(d => d.city_name),
-            datasets: [{
-                label: 'Daily Ridership',
-                data: top.map(d => d.total_ridership),
-                backgroundColor: gradient,
-                borderColor: ChartConfig.colors.purple,
-                borderWidth: 1,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            ...ChartConfig.barOptions(),
-            plugins: { ...ChartConfig.barOptions().plugins, legend: { display: false } },
-            scales: {
-                ...ChartConfig.barOptions().scales,
-                x: {
-                    ...ChartConfig.barOptions().scales.x,
-                    ticks: { maxRotation: 45, minRotation: 30, color: '#5c6078', font: { size: 10 } }
-                },
-                y: {
-                    ...ChartConfig.barOptions().scales.y,
-                    title: { display: true, text: 'Daily Ridership', color: '#5c6078' }
-                }
-            }
-        }
-    });
-}
-
-// ────────────────────────────────────────────────────
-// New Accident Charts
-// ────────────────────────────────────────────────────
-function renderAccidentTimeChart(data) {
-    destroyChart('accidentTimeChart');
-    const ctx = document.getElementById('accidentTimeChart').getContext('2d');
-
-    const timeEmoji = { Morning: '🌅', Afternoon: '☀️', Evening: '🌆', Night: '🌙' };
-    const timeColors = {
-        Morning:   ChartConfig.colors.yellow,
-        Afternoon: ChartConfig.colors.orange,
-        Evening:   ChartConfig.colors.purple,
-        Night:     ChartConfig.colors.blue,
-    };
-
-    chartInstances.accidentTimeChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: data.map(d => `${timeEmoji[d.time_of_day] || ''} ${d.time_of_day}`),
-            datasets: [
-                {
-                    label: 'Accidents',
-                    data: data.map(d => d.count),
-                    backgroundColor: data.map(d => (timeColors[d.time_of_day] || '#8b8fa8') + '40'),
-                    borderColor:     data.map(d =>  timeColors[d.time_of_day] || '#8b8fa8'),
-                    borderWidth: 1.5,
-                    borderRadius: 8,
-                    yAxisID: 'y',
-                },
-                {
-                    label: 'Casualties',
-                    data: data.map(d => d.casualties),
-                    type: 'line',
-                    borderColor: ChartConfig.colors.red,
-                    backgroundColor: ChartConfig.colors.red + '15',
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.4,
-                    fill: true,
-                    yAxisID: 'y1',
-                }
-            ]
-        },
-        options: {
-            ...ChartConfig.barOptions(),
-            scales: {
-                x:  { grid: { display: false }, ticks: { color: '#8b8fa8' } },
-                y:  { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5c6078' }, title: { display: true, text: 'Accidents', color: '#5c6078' } },
-                y1: { position: 'right', grid: { display: false }, ticks: { color: '#5c6078' }, title: { display: true, text: 'Casualties', color: '#5c6078' } },
-            }
-        }
-    });
-}
-
-function renderAccidentStateChart(data) {
-    destroyChart('accidentStateChart');
-    const ctx = document.getElementById('accidentStateChart').getContext('2d');
-    const top = data.slice(0, 10);
-
-    chartInstances.accidentStateChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: top.map(d => d.state_name),
-            datasets: [
-                {
-                    label: 'Total Accidents',
-                    data: top.map(d => d.total_accidents),
-                    backgroundColor: '#ff174430',
-                    borderColor: '#ff1744',
-                    borderWidth: 1.5,
-                    borderRadius: 4,
-                },
-                {
-                    label: 'Fatal',
-                    data: top.map(d => d.fatal_accidents || d.fatal_count || 0),
-                    backgroundColor: '#ff910060',
-                    borderColor: '#ff9100',
-                    borderWidth: 1.5,
-                    borderRadius: 4,
-                }
-            ]
-        },
-        options: {
-            ...ChartConfig.barOptions(),
-            indexAxis: 'y',
-            scales: {
-                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5c6078' } },
-                y: { grid: { display: false }, ticks: { color: '#8b8fa8', font: { size: 10 } } }
-            }
-        }
-    });
-}
-
-// ────────────────────────────────────────────────────
-// New Transport Chart
-// ────────────────────────────────────────────────────
-function renderTransportFreqChart(data) {
-    destroyChart('transportFreqChart');
-    const ctx = document.getElementById('transportFreqChart').getContext('2d');
-
-    const typeColors = {
-        Bus:   ChartConfig.colors.green,
-        Metro: ChartConfig.colors.cyan,
-        Tram:  ChartConfig.colors.orange,
-        Ferry: ChartConfig.colors.blue,
-    };
-
-    chartInstances.transportFreqChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: data.map(d => d.transport_type),
-            datasets: [
-                {
-                    label: 'Avg Frequency (mins)',
-                    data: data.map(d => d.avg_frequency),
-                    backgroundColor: data.map(d => (typeColors[d.transport_type] || ChartConfig.colors.purple) + '40'),
-                    borderColor:     data.map(d =>  typeColors[d.transport_type] || ChartConfig.colors.purple),
-                    borderWidth: 1.5,
-                    borderRadius: 8,
-                    yAxisID: 'y',
-                },
-                {
-                    label: 'Avg Stops',
-                    data: data.map(d => d.avg_stops),
-                    type: 'line',
-                    borderColor: ChartConfig.colors.yellow,
-                    backgroundColor: ChartConfig.colors.yellow + '15',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    tension: 0.3,
-                    fill: false,
-                    yAxisID: 'y1',
-                },
-                {
-                    label: 'Routes',
-                    data: data.map(d => d.routes),
-                    type: 'line',
-                    borderColor: ChartConfig.colors.pink,
-                    borderDash: [6, 4],
-                    pointRadius: 4,
-                    tension: 0,
-                    fill: false,
-                    yAxisID: 'y1',
-                }
-            ]
-        },
-        options: {
-            ...ChartConfig.barOptions(),
-            scales: {
-                x:  { grid: { display: false }, ticks: { color: '#8b8fa8' } },
-                y:  { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5c6078' }, title: { display: true, text: 'Avg Frequency (min)', color: '#5c6078' } },
-                y1: { position: 'right', grid: { display: false }, ticks: { color: '#5c6078' }, title: { display: true, text: 'Stops / Routes', color: '#5c6078' } },
-            }
-        }
-    });
-}
 
 // ────────────────────────────────────────────────────
 // Theme Toggle Update
