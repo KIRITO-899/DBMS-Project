@@ -9,8 +9,7 @@ USE smart_traffic;
 -- ============================================================
 -- Table 1: states — Indian States & Union Territories
 -- ============================================================
-DROP TABLE IF EXISTS public_transport;
-DROP TABLE IF EXISTS accidents;
+
 DROP TABLE IF EXISTS vehicles;
 
 DROP TABLE IF EXISTS traffic_readings;
