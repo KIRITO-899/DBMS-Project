@@ -12,10 +12,11 @@ const { getLiveTrafficForCity, determineCongestion } = require('./fetchLiveTraff
 
 // Re-use the same config as connection.js
 const DB_CONFIG = {
-    host: 'localhost',
-    user: 'root',
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD,           // <-- Sourced from .env
     database: process.env.DB_NAME || 'railway',
+    port: process.env.DB_PORT || 3306,
     multipleStatements: true,
     dateStrings: true
 };
