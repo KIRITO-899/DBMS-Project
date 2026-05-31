@@ -15,6 +15,7 @@ const DB_CONFIG = {
     host: 'localhost',
     user: 'root',
     password: process.env.DB_PASSWORD,           // <-- Sourced from .env
+    database: process.env.DB_NAME || 'railway',
     multipleStatements: true,
     dateStrings: true
 };
@@ -155,7 +156,7 @@ async function seed() {
     console.log('   ✅  Schema created.\n');
 
     // --- Now connect to the database ---
-    await conn.changeUser({ database: 'smart_traffic' });
+    await conn.changeUser({ database: process.env.DB_NAME || 'railway' });
 
     // ─── 1. States ──────────────────────────────────
     console.log('🏛️   Seeding states ...');

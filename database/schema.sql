@@ -3,8 +3,8 @@
 -- Schema Definition (5 Normalized Tables in 3NF)
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS smart_traffic;
-USE smart_traffic;
+-- CREATE DATABASE IF NOT EXISTS smart_traffic;
+-- USE smart_traffic;
 
 -- ============================================================
 -- Table 1: states — Indian States & Union Territories
