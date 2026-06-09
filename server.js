@@ -45,6 +45,11 @@ app.use((req, res, next) => {
     });
 });
 
+// ─── Health Check (DB-independent) ──────────
+// Always 200 if the process is up, even when the database is unreachable.
+// Lets Railway / uptime probes distinguish "app down" from "DB down".
+app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok', uptime: process.uptime() }));
+
 // ─── API Routes ─────────────────────────────
 app.use('/api/traffic',   require('./routes/traffic'));
 app.use('/api/analytics', require('./routes/analytics'));
@@ -60,6 +65,13 @@ app.get('*', (req, res) => {
 app.use((err, req, res, next) => {
     console.error('❌ Server Error:', err.message);
     res.status(500).json({ error: err.message });
+});
+
+// ─── Safety Net ─────────────────────────────
+// Log (don't crash) on stray async errors so a single bad poll/request
+// can never take the whole Railway process down.
+process.on('unhandledRejection', (reason) => {
+    console.error('❌ Unhandled Rejection:', reason);
 });
 
 // ─── Start & Background Polling ───────────────

@@ -10,13 +10,14 @@ const path  = require('path');
 const fs    = require('fs');
 const { getLiveTrafficForCity, determineCongestion } = require('./fetchLiveTraffic');
 
-// Re-use the same config as connection.js
+// Re-use the same config as connection.js — MYSQL* (Railway) first, then DB_* (local), then defaults
+const DB_NAME = process.env.MYSQLDATABASE || process.env.DB_NAME || 'railway';
 const DB_CONFIG = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD,           // <-- Sourced from .env
-    database: process.env.DB_NAME || 'railway',
-    port: process.env.DB_PORT || 3306,
+    host:     process.env.MYSQLHOST     || process.env.DB_HOST     || 'localhost',
+    user:     process.env.MYSQLUSER     || process.env.DB_USER     || 'root',
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
+    database: DB_NAME,
+    port:     process.env.MYSQLPORT     || process.env.DB_PORT     || 3306,
     multipleStatements: true,
     dateStrings: true
 };
@@ -157,7 +158,7 @@ async function seed() {
     console.log('   ✅  Schema created.\n');
 
     // --- Now connect to the database ---
-    await conn.changeUser({ database: process.env.DB_NAME || 'railway' });
+    await conn.changeUser({ database: DB_NAME });
 
     // ─── 1. States ──────────────────────────────────
     console.log('🏛️   Seeding states ...');

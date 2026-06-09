@@ -93,7 +93,7 @@ router.get('/indexes', async (req, res, next) => {
                 INDEX_TYPE AS index_type,
                 NULLABLE AS nullable
             FROM INFORMATION_SCHEMA.STATISTICS
-            WHERE TABLE_SCHEMA = 'smart_traffic'
+            WHERE TABLE_SCHEMA = DATABASE()
             ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
         `);
 
@@ -142,7 +142,7 @@ router.get('/cost-estimation', async (req, res, next) => {
                 TABLE_NAME, TABLE_ROWS, DATA_LENGTH, INDEX_LENGTH,
                 AVG_ROW_LENGTH
             FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = 'smart_traffic' AND TABLE_NAME = 'traffic_readings'
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'traffic_readings'
         `);
 
         const totalRows    = tableStats.TABLE_ROWS || 1;
@@ -243,7 +243,7 @@ router.get('/index-stats', async (req, res, next) => {
             FROM INFORMATION_SCHEMA.STATISTICS s
             JOIN INFORMATION_SCHEMA.TABLES t
                 ON s.TABLE_SCHEMA = t.TABLE_SCHEMA AND s.TABLE_NAME = t.TABLE_NAME
-            WHERE s.TABLE_SCHEMA = 'smart_traffic'
+            WHERE s.TABLE_SCHEMA = DATABASE()
             GROUP BY s.TABLE_NAME, s.INDEX_NAME, t.TABLE_ROWS, s.INDEX_TYPE
             ORDER BY selectivity DESC
         `);

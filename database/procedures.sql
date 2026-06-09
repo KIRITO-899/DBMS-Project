@@ -1,9 +1,9 @@
 -- ============================================================
 -- Smart Traffic & Transport Database System
 -- Views (run via seed.js with multipleStatements: true)
+-- Runs against whichever database the connection already selected
+-- (Railway: "railway", local: "smart_traffic") — no hardcoded USE.
 -- ============================================================
-
-USE smart_traffic;
 
 -- ============================================================
 -- VIEW 1: City Traffic Summary
